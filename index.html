@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>插件手机同步</title>
+    <style>
+        /* ─── 设计 Token(与 gopeed-helper 同源)── */
+        :root {
+            --bg: #ffffff;
+            --bg-soft: #f5f6f8;
+            --bg-hover: #eceff3;
+            --text: #1f2329;
+            --text-soft: #6b7280;
+            --text-mute: #9ca3af;
+            --border: #e5e7eb;
+            --hairline: #edeff2;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-soft: #eff6ff;
+            --danger: #ef4444;
+            --danger-soft: #fef2f2;
+            --success: #10b981;
+            --success-soft: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-soft: #fffbeb;
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.06);
+            --radius: 10px;
+            --radius-sm: 7px;
+            color-scheme: light;
+        }
+        :root.dark {
+            --bg: #1e1f22;
+            --bg-soft: #2a2b2f;
+            --bg-hover: #33353b;
+            --text: #e6e8eb;
+            --text-soft: #9ca3af;
+            --text-mute: #6b7280;
+            --border: #353841;
+            --hairline: #2f323a;
+            --primary: #4a90e2;
+            --primary-hover: #5b9ee8;
+            --primary-soft: rgba(74, 144, 226, 0.15);
+            --danger: #f87171;
+            --danger-soft: rgba(248, 113, 113, 0.12);
+            --success: #34d399;
+            --success-soft: rgba(52, 211, 153, 0.12);
+            --warning: #fbbf24;
+            --warning-soft: rgba(251, 191, 36, 0.12);
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.35);
+            color-scheme: dark;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+                'Microsoft YaHei', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ─── 顶部 ─────────────────────── */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        header .brand {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex: 1;
+            min-width: 0;
+        }
+        header .logo {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        header .logo svg { width: 15px; height: 15px; }
+        header h1 {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.1px;
+        }
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-soft);
+            padding: 4px 10px 4px 8px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            flex-shrink: 0;
+        }
+        .status-chip .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-mute);
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .status-chip.on {
+            color: var(--success);
+            background: var(--success-soft);
+            border-color: transparent;
+        }
+        .status-chip.on .dot {
+            background: var(--success);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+            70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* ─── 卡片 ─────────────────────── */
+        .card {
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        /* 可折叠卡片:配置完后折叠,只留标题行,让启动按钮一眼可见 */
+        .card.collapsible .card-head[data-toggle] { cursor: pointer; user-select: none; }
+        .card.collapsible .card-head[data-toggle]:hover .h2,
+        .card.collapsible .card-head[data-toggle]:hover h2 { color: var(--primary); }
+        .card.collapsible .chevron {
+            width: 16px; height: 16px; color: var(--text-mute); flex-shrink: 0;
+            transition: transform 0.25s ease;
+            margin-left: 4px;
+        }
+        .card.collapsible.collapsed .card-body { display: none; }
+        .card.collapsible.collapsed { padding-bottom: 12px; }
+        .card.collapsible.collapsed .chevron { transform: rotate(-90deg); }
+        .card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .card-head h2 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-soft);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .card-head .head-action {
+            font-size: 11px;
+            color: var(--text-soft);
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .row:last-child { margin-bottom: 0; }
+        .row label {
+            width: 78px;
+            color: var(--text-soft);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .val {
+            flex: 1;
+            font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+            font-size: 12.5px;
+            background: var(--bg);
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            word-break: break-all;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .val:hover { border-color: var(--primary); }
+        .val .val-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .val .copy-ic {
+            width: 13px;
+            height: 13px;
+            color: var(--text-mute);
+            flex-shrink: 0;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .val:hover .copy-ic { opacity: 1; }
+
+        .badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: var(--bg-soft);
+            color: var(--text-soft);
+        }
+        .badge.ok { background: var(--success-soft); color: var(--success); }
+        .badge.warn { background: var(--warning-soft); color: var(--warning); }
+        .badge.err { background: var(--danger-soft); color: var(--danger); }
+
+        .hint {
+            font-size: 11.5px;
+            color: var(--text-soft);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        .hint code {
+            font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+            font-size: 11px;
+            background: var(--bg);
+            padding: 1px 5px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        /* ─── 按钮 ─────────────────────── */
+        .btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn svg { width: 14px; height: 14px; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-soft);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { background: var(--bg-hover); color: var(--text); }
+        .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        input[type="text"], input[type="password"] {
+            flex: 1;
+            padding: 7px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 12.5px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+            min-width: 0;
+        }
+        input:focus { border-color: var(--primary); }
+        textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--hairline);
+            background: var(--bg);
+            color: var(--text-soft);
+            font-size: 11.5px;
+            font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+            outline: none;
+            transition: border-color 0.15s, color 0.15s;
+            resize: vertical;
+            min-height: 64px;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+        textarea:focus { border-color: var(--primary); color: var(--text); }
+        textarea::placeholder { color: var(--text-mute); }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .actions .btn { flex: 0 0 auto; }
+        .actions .spacer { flex: 1; }
+
+        /* ─── 日志 ─────────────────────── */
+        .logs-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .logs {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+            font-size: 11.5px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            min-height: 100px;
+        }
+        .log-line {
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--hairline);
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+        }
+        .log-line:last-child { border-bottom: none; }
+        .log-line:hover { background: var(--bg-soft); }
+        .log-time {
+            color: var(--text-mute);
+            flex-shrink: 0;
+            font-size: 10.5px;
+        }
+        .log-method {
+            flex-shrink: 0;
+            width: 46px;
+            font-weight: 600;
+        }
+        .log-method.GET { color: var(--primary); }
+        .log-method.POST { color: var(--success); }
+        .log-method.PATCH, .log-method.PUT { color: var(--warning); }
+        .log-method.DELETE { color: var(--danger); }
+        .log-status {
+            flex-shrink: 0;
+            width: 28px;
+            font-weight: 600;
+        }
+        .log-status.s2 { color: var(--success); }
+        .log-status.s4, .log-status.s5 { color: var(--danger); }
+        .log-path {
+            color: var(--text-soft);
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .log-path .note { color: var(--text-mute); }
+        .empty {
+            color: var(--text-mute);
+            text-align: center;
+            padding: 28px 16px;
+            font-size: 12px;
+        }
+        .empty .emoji {
+            font-size: 26px;
+            margin-bottom: 6px;
+            opacity: 0.5;
+            display: block;
+        }
+
+        /* ─── Toast ─────────────────────── */
+        .toast {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translate(-50%, -120%);
+            background: var(--text);
+            color: var(--bg);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transition: all 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+            pointer-events: none;
+            z-index: 100;
+            max-width: 80vw;
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .toast.err { background: var(--danger); color: #fff; }
+
+        /* ─── 新手引导 ─────────────────── */
+        .guide-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0);
+            z-index: 200;
+            pointer-events: none; /* 默认不拦截点击,只有引导激活时(.on)才挡 */
+            transition: background 0.25s;
+        }
+        .guide-mask.on {
+            background: rgba(0, 0, 0, 0.4);
+            pointer-events: auto; /* 引导进行中才拦截背后点击 */
+        }
+        /* 用 4 层大 box-shadow 模拟「挖洞」:中心透明、向外半透明黑。
+           5000px 足够覆盖任意窗口。配合 border 高亮目标元素。 */
+        .guide-hole {
+            position: fixed;
+            border-radius: var(--radius);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4), 0 0 0 2px var(--primary), 0 0 12px 1px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+            pointer-events: none;
+            z-index: 201;
+        }
+        .guide-pop {
+            position: fixed;
+            background: var(--text);
+            color: var(--bg);
+            padding: 16px 18px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            z-index: 202;
+            max-width: 320px;
+            transition: top 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1), left 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .guide-pop .gp-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .guide-pop .gp-title .gp-num {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: var(--primary); color: #fff;
+            font-size: 11px; display: inline-flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .guide-pop .gp-actions { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+        .guide-pop .gp-dots { display: flex; gap: 5px; flex: 1; }
+        .guide-pop .gp-dots .d { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); }
+        .guide-pop .gp-dots .d.on { background: var(--primary); width: 18px; border-radius: 3px; }
+        .guide-pop .gp-btn {
+            padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;
+            font-size: 12.5px; font-weight: 500; font-family: inherit;
+        }
+        .guide-pop .gp-btn.primary { background: var(--primary); color: #fff; }
+        .guide-pop .gp-btn.primary:hover { background: var(--primary-hover); }
+        .guide-pop .gp-btn.ghost { background: rgba(255,255,255,0.12); color: var(--bg); }
+        .guide-pop .gp-btn.ghost:hover { background: rgba(255,255,255,0.2); }
+        .guide-pop.gp-above { /* 气泡在目标上方时,尖角朝下 */ }
+        .guide-pop.gp-below .gp-arrow,
+        .guide-pop.gp-above .gp-arrow { display: none; } /* 简化:不做尖角 */
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2.5" />
+                    <path d="M12 18h.01" />
+                </svg>
+            </div>
+            <h1>插件手机同步</h1>
+        </div>
+        <span class="status-chip" id="statusChip">
+            <span class="dot"></span>
+            <span id="statusText">未启动</span>
+        </span>
+    </header>
+
+    <div class="card collapsible" id="mcpCard">
+        <div class="card-head" data-toggle>
+            <h2>MCP 配置</h2>
+            <span class="head-action" id="mcpCfgStatus">未配置</span>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="card-body">
+        <div class="hint" style="margin-top:0;margin-bottom:8px">
+            uTools 设置 → AI Agent 连接 → 启用 MCP → 复制配置,然后点「从剪贴板导入」。
+        </div>
+        <textarea id="mcpCfgInput" placeholder='或在此手动粘贴 MCP 配置 JSON&#10;{ "mcpServers": { "utools": { "type": "http", "url": "http://127.0.0.1:3501/mcp", "headers": { "x-mcp-key": "..." } } } }' spellcheck="false" autocomplete="off"></textarea>
+        <div class="actions" style="margin-top:10px;margin-bottom:0">
+            <button class="btn btn-ghost" id="pasteMcpCfg">从剪贴板导入</button>
+            <button class="btn btn-primary" id="applyMcpCfg">应用</button>
+            <div class="spacer"></div>
+            <button class="btn btn-ghost" id="clearMcpCfg" style="color:var(--danger)">清除</button>
+        </div>
+        <div class="hint">key 仅存本机插件存储,不上传。应用后若桥接运行中会自动重启。</div>
+        </div>
+    </div>
+
+    <div class="card collapsible" id="keyCard">
+        <div class="card-head" data-toggle>
+            <h2>访问密钥</h2>
+            <span class="head-action" id="keyCfgStatus">用于鉴权</span>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="card-body">
+        <div class="row">
+            <label>x-bridge-key</label>
+            <input type="text" id="keyInput" placeholder="留空 = 关闭鉴权(任何人都能读写剪贴板/笔记)" autocomplete="off" spellcheck="false" />
+            <button class="btn btn-ghost" id="saveKey">保存</button>
+            <button class="btn btn-ghost" id="regenKey" title="随机生成一个新密钥">换一个</button>
+        </div>
+        <div class="hint">设置后,手机请求需带 <code>x-bridge-key</code> 头,访问地址会自动附带 <code>?key=</code>。<strong>留空(关闭鉴权)有风险</strong>:同局域网内任意网页都能读写你的剪贴板(含密码)、笔记、待办。首次使用已为你随机生成一个,无需手动设置。</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            <h2>连接信息</h2>
+        </div>
+        <div class="row">
+            <label>局域网地址</label>
+            <div class="val" id="lanAddr" title="点击复制">
+                <span class="val-text">—</span>
+                <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            </div>
+            <label style="margin-left:16px">端口</label>
+            <div class="val" id="port" title="点击复制" style="flex:0 0 80px">
+                <span class="val-text">—</span>
+                <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            </div>
+        </div>
+        <div class="row">
+            <label>访问地址</label>
+            <div class="val" id="fullUrl" title="点击复制">
+                <span class="val-text">—</span>
+                <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+            </div>
+        </div>
+        <div class="row">
+            <label>MCP 状态</label>
+            <div style="flex:1;display:flex;align-items:center;gap:8px">
+                <span class="badge" id="mcpBadge">未知</span>
+                <span style="font-size:11.5px;color:var(--text-soft)" id="mcpSession"></span>
+            </div>
+        </div>
+        <div class="hint">📱 手机浏览器访问上面的「访问地址」即可使用(界面和数据同一地址)。建议在手机上「添加到主屏幕」。</div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-primary" id="startBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            启动桥接
+        </button>
+        <button class="btn btn-danger" id="stopBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+            停止
+        </button>
+        <div class="spacer"></div>
+        <button class="btn btn-ghost" id="refreshBtn" title="刷新状态">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+        </button>
+    </div>
+
+    <div class="card logs-card">
+        <div class="card-head">
+            <h2>最近请求</h2>
+            <span class="head-action" id="logCount">0 条</span>
+        </div>
+        <div class="logs" id="logs">
+            <div class="empty">
+                <span class="emoji">📡</span>
+                暂无请求,启动后在手机上访问即可看到日志
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="guide-mask" id="guideMask"></div>
+    <div class="guide-hole" id="guideHole" style="display:none"></div>
+    <div class="guide-pop" id="guidePop" style="display:none"></div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        let _inited = false;
+
+        /* ─── 暗色主题:跟随 uTools / 系统 ── */
+        function applyTheme() {
+            let dark = false;
+            try { dark = utools.isDarkColors(); } catch (e) {
+                dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            document.documentElement.classList.toggle('dark', !!dark);
+        }
+        try {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+        } catch (e) { /* 老版本 Webkit 用 addListener,这里忽略 */ }
+
+        function toast(msg, isErr, duration) {
+            const t = $('toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (isErr ? ' err' : '');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => { t.className = 'toast' + (isErr ? ' err' : ''); }, duration || 2400);
+        }
+
+        async function copyText(text) {
+            if (!text || text === '—') return;
+            try {
+                await navigator.clipboard.writeText(text);
+                toast('已复制');
+            } catch (e) {
+                try { utools.copyText(text); toast('已复制'); }
+                catch (e2) { toast('复制失败', true); }
+            }
+        }
+
+        function setVal(id, text) {
+            const el = $(id);
+            const span = el.querySelector('.val-text');
+            if (span) span.textContent = text;
+            else el.textContent = text;
+        }
+
+        function renderMcpConfig(autoCollapse) {
+            let cfg = { url: '—', key: '' };
+            try { cfg = window.bridge.getMcpConfig(); } catch (e) {}
+            // key 为空 = 未配置;有值 = 显示脱敏后的 key(形如 xxxx...xxxx)
+            const configured = !!cfg.key;
+            const badge = $('mcpCfgStatus');
+            badge.textContent = configured ? ('已配置 · ' + cfg.key) : '未配置';
+            badge.style.color = configured ? 'var(--success)' : 'var(--warning)';
+            // autoCollapse=true(应用配置成功后):已配置就折叠,让启动按钮露出来
+            // 不在普通 renderStatus 时折叠,避免用户正在编辑被收起
+            if (autoCollapse) updateCollapse('mcpCard', configured);
+        }
+
+        /** 渲染访问密钥卡片的状态徽章 + 折叠控制 */
+        function renderKeyCfgStatus(autoCollapse) {
+            let k = '';
+            try { k = window.bridge.getKey() || ''; } catch (e) {}
+            const badge = $('keyCfgStatus');
+            // 有 key = 已启用鉴权(绿);无 key = 已关闭鉴权(红,危险状态)
+            badge.textContent = k ? '已启用鉴权' : '已关闭鉴权 · 有风险';
+            badge.style.color = k ? 'var(--success)' : 'var(--danger)';
+            if (autoCollapse) updateCollapse('keyCard', !!k);
+        }
+
+        /** 切换/设置卡片折叠态。configured=true→折叠, false→展开 */
+        function updateCollapse(cardId, collapse) {
+            const card = $(cardId);
+            if (!card) return;
+            card.classList.toggle('collapsed', collapse);
+        }
+
+        /**
+         * 解析 uTools 标准 MCP 配置 JSON,提取 { url, key }。
+         * 接受两种形态:完整 { mcpServers: { utools: {...} } } 或单个 server 对象。
+         */
+        function parseMcpConfigJson(text) {
+            const trimmed = (text || '').trim();
+            if (!trimmed) throw new Error('请先粘贴配置 JSON');
+            let obj;
+            try { obj = JSON.parse(trimmed); }
+            catch (e) { throw new Error('JSON 格式错误: ' + e.message); }
+            // 取 mcpServers.utools;没有则取 mcpServers 的第一个值;再否则当整对象是 server
+            let server = null;
+            if (obj && obj.mcpServers) {
+                const ms = obj.mcpServers;
+                server = ms.utools || ms[Object.keys(ms)[0]];
+            } else if (obj && (obj.url || obj.type)) {
+                server = obj;
+            }
+            if (!server) throw new Error('未找到 mcpServers 配置');
+            const url = server.url;
+            const key = server.headers && server.headers['x-mcp-key'];
+            if (!url) throw new Error('配置缺少 url');
+            if (!key) throw new Error('配置缺少 headers["x-mcp-key"]');
+            return { url, key };
+        }
+
+        function renderStatus() {
+            // bridge 不可用时(preload 加载失败/非 uTools 环境预览)给兜底状态,
+            // 不让 init 在这里中断 —— 否则后续按钮监听全绑不上,控制台整个失灵。
+            let s;
+            try { s = window.bridge.status(); } catch (e) {
+                s = { running: false, port: null, lanIp: '—', session: '未连接' };
+            }
+            const chip = $('statusChip');
+            chip.className = 'status-chip' + (s.running ? ' on' : '');
+            $('statusText').textContent = s.running ? `运行中 · ${s.port}` : '未启动';
+
+            // MCP 状态徽章
+            const mcpBadge = $('mcpBadge');
+            const session = s.session || '';
+            if (session && session !== '—' && !/no|none|未|离线|disconnect/i.test(String(session))) {
+                mcpBadge.className = 'badge ok';
+                mcpBadge.textContent = '已连接';
+                $('mcpSession').textContent = session;
+            } else if (s.running) {
+                mcpBadge.className = 'badge warn';
+                mcpBadge.textContent = '等待';
+                $('mcpSession').textContent = 'MCP 未就绪';
+            } else {
+                mcpBadge.className = 'badge';
+                mcpBadge.textContent = '—';
+                $('mcpSession').textContent = '';
+            }
+
+            if (s.running) {
+                setVal('lanAddr', s.lanIp || '—');
+                setVal('port', String(s.port || '—'));
+                // 访问地址:设了 bridge-key 则带上 ?key=xxx,手机打开即自动鉴权
+                let key = '';
+                try { key = window.bridge.getKey() || ''; } catch (e) {}
+                const url = `http://${s.lanIp}:${s.port}` + (key ? `/?key=${encodeURIComponent(key)}` : '');
+                setVal('fullUrl', url);
+                $('startBtn').disabled = true;
+                $('stopBtn').disabled = false;
+            } else {
+                setVal('lanAddr', '—');
+                setVal('port', '—');
+                setVal('fullUrl', '—');
+                $('startBtn').disabled = false;
+                $('stopBtn').disabled = true;
+            }
+        }
+
+        function renderLogs() {
+            let logs;
+            try { logs = window.bridge.getLogs(); } catch (e) { logs = []; }
+            const el = $('logs');
+            $('logCount').textContent = logs.length + ' 条';
+            if (!logs.length) {
+                el.innerHTML = '<div class="empty"><span class="emoji">📡</span>暂无请求,启动后在手机上访问即可看到日志</div>';
+                return;
+            }
+            el.innerHTML = logs.map((l) => {
+                const sc = l.status < 300 ? 's2' : (l.status < 500 ? 's4' : 's5');
+                const note = l.note ? ` <span class="note">· ${escapeHtml(l.note)}</span>` : '';
+                return `<div class="log-line">
+                    <span class="log-time">${escapeHtml(l.time || '')}</span>
+                    <span class="log-method ${escapeHtml(l.method || '')}">${escapeHtml(l.method || '')}</span>
+                    <span class="log-status ${sc}">${escapeHtml(String(l.status || ''))}</span>
+                    <span class="log-path" title="${escapeHtml(l.note || '')}">${escapeHtml(l.path || '')}${note}</span>
+                </div>`;
+            }).join('');
+            // 自动滚到底
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // preload 推送新日志时实时刷新
+        window.__bridgeOnLog = () => renderLogs();
+
+        function init() {
+            if (_inited) {
+                // 已绑定事件,只刷新数据
+                renderStatus();
+                renderMcpConfig();
+                renderLogs();
+                return;
+            }
+            _inited = true;
+
+            applyTheme();
+
+            // 恢复访问密钥：优先用 preload 层的 getKey（它在模块加载时已保证
+            // 「首次启动随机生成 + 持久化」，所以这里拿到的就是实际生效的 key）
+            let curKey = '';
+            try { curKey = window.bridge.getKey() || ''; } catch (e) {}
+            $('keyInput').value = curKey;
+            try { window.bridge.setKey(curKey); } catch (e) {}
+
+            renderStatus();
+            renderMcpConfig();
+            renderKeyCfgStatus();
+            renderLogs();
+
+            // 初始折叠态:MCP 卡未配置时展开引导填写、已配置折叠;
+            // 访问密钥是可选项,无论是否设置都默认折叠(不挡启动按钮)
+            try { updateCollapse('mcpCard', !!window.bridge.getMcpConfig().key); } catch (e) {}
+            updateCollapse('keyCard', true);
+
+            // 卡片头点击切换折叠(两张可折叠卡)
+            document.querySelectorAll('.card.collapsible .card-head[data-toggle]').forEach((head) => {
+                head.addEventListener('click', () => {
+                    head.closest('.card').classList.toggle('collapsed');
+                });
+            });
+
+            $('startBtn').addEventListener('click', async () => {
+                $('startBtn').disabled = true;
+                try {
+                    const r = await window.bridge.start();
+                    toast(`已启动 · ${r.lanIp}:${r.port}`);
+                    renderStatus();
+                } catch (e) {
+                    toast(e.message || String(e), true);
+                    $('startBtn').disabled = false;
+                }
+            });
+
+            $('stopBtn').addEventListener('click', async () => {
+                try {
+                    await window.bridge.stop();
+                    toast('已停止');
+                    renderStatus();
+                    renderLogs();
+                } catch (e) {
+                    toast(e.message || String(e), true);
+                }
+            });
+
+            $('refreshBtn').addEventListener('click', () => {
+                renderStatus();
+                renderLogs();
+                toast('已刷新');
+            });
+
+            $('saveKey').addEventListener('click', () => {
+                const k = $('keyInput').value.trim();
+                // 通过 bridge.setKey 写入设备隔离存储（getNativeId 前缀），不随云同步扩散
+                try { window.bridge.setKey(k); } catch (e) {}
+                renderStatus(); // 刷新访问地址(带上/去掉 key 参数)
+                renderKeyCfgStatus(true); // 有 key 就折叠
+                toast(k ? '密钥已保存' : '⚠️ 已关闭鉴权!同局域网任意网页都能读写你的剪贴板/笔记。仅建议完全自用的可信 WiFi 这么做。', false, 5000);
+            });
+
+            $('regenKey').addEventListener('click', () => {
+                let nk = '';
+                try { nk = window.bridge.regenerateKey(); } catch (e) { toast(e.message || String(e), true); return; }
+                $('keyInput').value = nk;
+                renderStatus();
+                renderKeyCfgStatus(true);
+                toast('已生成新随机密钥,访问地址已更新');
+            });
+
+            $('pasteMcpCfg').addEventListener('click', async () => {
+                const btn = $('pasteMcpCfg');
+                btn.disabled = true;
+                try {
+                    // 读剪贴板:优先 preload 的 electron.clipboard（uTools 无公开读剪贴板 API）,
+                    // 兜底 web 标准 navigator.clipboard（浏览器/web 预览时用）
+                    let text = '';
+                    try { text = window.bridge.readClipboard() || ''; } catch (e) {}
+                    if (!text && navigator.clipboard && navigator.clipboard.readText) {
+                        try { text = (await navigator.clipboard.readText()) || ''; } catch (e) {}
+                    }
+                    if (!text) throw new Error('剪贴板为空或读取失败');
+                    // 边读边校验,不是合法配置 JSON 就报错,不污染 textarea
+                    parseMcpConfigJson(text);
+                    $('mcpCfgInput').value = text;
+                    toast('已从剪贴板导入,点「应用」生效');
+                } catch (e) {
+                    toast(e.message || String(e), true);
+                }
+                btn.disabled = false;
+            });
+
+            $('applyMcpCfg').addEventListener('click', async () => {
+                const btn = $('applyMcpCfg');
+                btn.disabled = true;
+                try {
+                    const { url, key } = parseMcpConfigJson($('mcpCfgInput').value);
+                    const wasRunning = window.bridge.status().running;
+                    const r = await window.bridge.setMcpConfig({ url, key });
+                    renderMcpConfig(true); // 配置成功 → 自动折叠
+                    renderStatus();
+                    $('mcpCfgInput').value = '';
+                    toast('已应用 · key ' + r.key + (wasRunning ? ' · 桥接已重启' : ''));
+                } catch (e) {
+                    toast(e.message || String(e), true);
+                    renderStatus();      // 桥接可能已被失败的重启停掉，UI 需与实际状态同步
+                    renderMcpConfig();
+                }
+                btn.disabled = false;
+            });
+
+            $('clearMcpCfg').addEventListener('click', async () => {
+                const btn = $('clearMcpCfg');
+                btn.disabled = true;
+                try {
+                    const wasRunning = window.bridge.status().running;
+                    await window.bridge.setMcpConfig({ clear: true });
+                    renderMcpConfig(true); // 清除后未配置 → 自动展开重新填
+                    renderStatus();
+                    toast('已清除 MCP 配置' + (wasRunning ? ' · 桥接已停止' : ''));
+                } catch (e) {
+                    toast(e.message || String(e), true);
+                    renderStatus();      // 清除会停掉桥接，失败时 UI 需与实际状态同步
+                    renderMcpConfig();
+                }
+                btn.disabled = false;
+            });
+
+            ['lanAddr', 'port', 'fullUrl'].forEach((id) => {
+                $(id).addEventListener('click', () => {
+                    const span = $(id).querySelector('.val-text');
+                    const text = span ? span.textContent : $(id).textContent;
+                    copyText(text);
+                });
+            });
+
+            // 首次打开显示新手引导(dbStorage guide-done 标记,看过一次不再弹)
+            try { if (!utools.dbStorage.getItem('guide-done')) startGuide(); } catch (e) {}
+        }
+
+        // ─── 新手引导 ───────────────────────────────────────────
+        // 4 步:配 MCP → 启动桥接 → 看连接地址 → 手机访问
+        // 每步:target=要高亮的元素 id/predicate,place=气泡位置 above/below
+        const GUIDE_STEPS = [
+            {
+                title: '第 1 步:配置 MCP',
+                body: '从 uTools「设置 → AI Agent 连接」复制 MCP 配置 JSON,粘到这里点「应用」。这是连接 uTools 数据的密钥,每台机器不同。',
+                target: () => document.getElementById('applyMcpCfg'),
+                place: 'below',
+            },
+            {
+                title: '第 2 步:启动桥接',
+                body: '配置好 MCP 后,点这里启动服务。启动后才能让手机连进来。',
+                target: () => document.getElementById('startBtn'),
+                place: 'below',
+            },
+            {
+                title: '第 3 步:查看连接地址',
+                body: '启动成功后,这里会显示手机要访问的地址(如 http://192.168.x.x:3721)。点了可直接复制。如果设了访问密钥,地址里会自动带上。',
+                target: () => document.getElementById('fullUrl'),
+                place: 'below',
+            },
+            {
+                title: '第 4 步:手机访问',
+                body: '手机和电脑连同一个 WiFi,用浏览器打开上面的地址即可。建议在手机上「添加到主屏幕」当 App 用。下方「最近请求」会实时显示手机的调用记录。',
+                target: () => document.querySelector('.logs-card'),
+                place: 'above',
+            },
+        ];
+
+        let guideIdx = 0;
+        function startGuide() {
+            guideIdx = 0;
+            document.getElementById('guideMask').classList.add('on');
+            renderGuideStep();
+            window.addEventListener('resize', renderGuideStep);
+            window.addEventListener('scroll', renderGuideStep, true);
+        }
+
+        function renderGuideStep() {
+            const step = GUIDE_STEPS[guideIdx];
+            if (!step) return endGuide();
+            const el = step.target();
+            const mask = document.getElementById('guideMask');
+            const hole = document.getElementById('guideHole');
+            const pop = document.getElementById('guidePop');
+
+            // 先把目标滚动到视口中央:小窗口下后续步骤(启动按钮等)可能在屏外,
+            // 不滚过去用户看不到高亮和气泡。smooth 滚动后再定位(延迟读布局)。
+            if (el && typeof el.scrollIntoView === 'function') {
+                try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+            }
+            // 平滑滚动需要时间,延迟读取滚动后的位置再放高亮洞和气泡
+            setTimeout(() => positionGuide(el, step, mask, hole, pop), 200);
+        }
+
+        /** 计算并放置高亮洞 + 气泡(滚动完成后调用,读到的坐标才准) */
+        function positionGuide(el, step, mask, hole, pop) {
+            // 渲染气泡内容(与滚动无关,先做)
+            const isLast = guideIdx === GUIDE_STEPS.length - 1;
+            const dots = GUIDE_STEPS.map((_, i) => `<span class="d${i === guideIdx ? ' on' : ''}"></span>`).join('');
+            pop.style.display = 'block';
+            pop.innerHTML =
+                '<div class="gp-title"><span class="gp-num">' + (guideIdx + 1) + '</span>' + escapeHtml(step.title) + '</div>' +
+                '<div class="gp-body">' + escapeHtml(step.body) + '</div>' +
+                '<div class="gp-actions">' +
+                    '<div class="gp-dots">' + dots + '</div>' +
+                    '<button class="gp-btn ghost" id="gpSkip">跳过</button>' +
+                    '<button class="gp-btn primary" id="gpNext">' + (isLast ? '开始使用' : '下一步') + '</button>' +
+                '</div>';
+            document.getElementById('gpSkip').onclick = endGuide;
+            document.getElementById('gpNext').onclick = () => {
+                if (isLast) endGuide();
+                else { guideIdx++; renderGuideStep(); }
+            };
+
+            if (!el) {
+                hole.style.display = 'none';
+                pop.style.left = ((window.innerWidth - 320) / 2) + 'px';
+                pop.style.top = ((window.innerHeight - 200) / 2) + 'px';
+                return;
+            }
+
+            const r = el.getBoundingClientRect();
+            const pad = 6;
+            hole.style.display = 'block';
+            hole.style.left = (r.left - pad) + 'px';
+            hole.style.top = (r.top - pad) + 'px';
+            hole.style.width = (r.width + pad * 2) + 'px';
+            hole.style.height = (r.height + pad * 2) + 'px';
+
+            // 气泡位置:优先 place 方向,放不下转另一侧
+            const popW = 320;
+            let popLeft = r.left + r.width / 2 - popW / 2;
+            popLeft = Math.max(12, Math.min(popLeft, window.innerWidth - popW - 12));
+            let popTop;
+            if (step.place === 'above') {
+                popTop = r.top - 16 - 180;
+                if (popTop < 12) popTop = r.bottom + 16;
+            } else {
+                popTop = r.bottom + 16;
+                if (popTop + 200 > window.innerHeight) popTop = r.top - 16 - 180;
+            }
+            pop.style.left = popLeft + 'px';
+            pop.style.top = Math.max(12, popTop) + 'px';
+        }
+
+        function endGuide() {
+            document.getElementById('guideMask').classList.remove('on');
+            document.getElementById('guideHole').style.display = 'none';
+            document.getElementById('guidePop').style.display = 'none';
+            try { utools.dbStorage.setItem('guide-done', 1); } catch (e) {}
+            window.removeEventListener('resize', renderGuideStep);
+            window.removeEventListener('scroll', renderGuideStep, true);
+        }
+
+        try { utools.onPluginEnter(() => init()); } catch (e) {}
+        if (document.readyState !== 'loading') init();
+        else window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,2137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" id="themeColorMeta" content="#f5f6f8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="uTools" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>uTools</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <style>
+        /* ─── 设计 Token ─────────────────────────── */
+        :root {
+            /* 主色:沉稳的 iOS 蓝 */
+            --primary: #007aff;
+            --primary-press: #0066d6;
+            --primary-soft: #e8f1ff;
+
+            /* 语义色 */
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+
+            /* 浅色(默认)中性色 */
+            --bg: #ffffff;
+            --bg-soft: #f2f3f5;
+            --bg-elev: #ffffff;
+            --bg-hover: rgba(0, 0, 0, 0.04);
+            --bg-press: rgba(0, 0, 0, 0.06);
+            --text: #1c1c1e;
+            --text-soft: #8e8e93;
+            --text-mute: #aeaeb2;
+            --border: rgba(0, 0, 0, 0.07);
+            --hairline: rgba(0, 0, 0, 0.09);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-fab: 0 6px 18px rgba(0, 122, 255, 0.42);
+
+            /* 尺寸 */
+            --radius-sm: 8px;
+            --radius: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+
+            /* 安全区 */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --tab-h: calc(52px + var(--safe-bottom));
+            --header-h: calc(44px + var(--safe-top));
+
+            /* 字号 */
+            --fs-title: 17px;
+            --fs-body: 15px;
+            --fs-foot: 13px;
+            --fs-mini: 11px;
+
+            color-scheme: light;
+        }
+
+        /* 暗色 */
+        :root.dark {
+            --primary: #0a84ff;
+            --primary-press: #409cff;
+            --primary-soft: rgba(10, 132, 255, 0.16);
+
+            --success: #30d158;
+            --warning: #ff9f0a;
+            --danger: #ff453a;
+
+            --bg: #000000;
+            --bg-soft: #1c1c1e;
+            --bg-elev: #2c2c2e;
+            --bg-hover: rgba(255, 255, 255, 0.06);
+            --bg-press: rgba(255, 255, 255, 0.1);
+            --text: #f2f2f7;
+            --text-soft: #98989f;
+            --text-mute: #636366;
+            --border: rgba(255, 255, 255, 0.08);
+            --hairline: rgba(255, 255, 255, 0.1);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+            --shadow-fab: 0 6px 18px rgba(10, 132, 255, 0.5);
+
+            color-scheme: dark;
+        }
+
+        /* ─── 基础重置 ─────────────────────────── */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        /* 注意：不要给 html/body 设 height:100%。
+           body 高度被钉死成视口高后，header 的 position:sticky 会失效——
+           下滑时标题栏随 body 整体滚出视口（不吸顶），而 .search-wrap 仍吸在
+           --header-h 处，中间就露出一段空白。让 body 高度由内容自然撑开即可。 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC',
+                'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-soft);
+            color: var(--text);
+            font-size: var(--fs-body);
+            line-height: 1.45;
+            overscroll-behavior-y: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background 0.2s, color 0.2s;
+        }
+        button {
+            font-family: inherit;
+            border: none;
+            background: none;
+            color: inherit;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        input, textarea, select {
+            font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        ::-webkit-scrollbar { width: 0; height: 0; }
+
+        /* ─── 顶部大标题栏(iOS Large Title 风格) ─── */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: var(--bg-soft);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            padding: var(--safe-top) 16px 0;
+        }
+        .header-bar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-bar h1 {
+            font-size: var(--fs-title);
+            font-weight: 700;
+            letter-spacing: -0.2px;
+            flex: 1;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 999px;
+            font-size: var(--fs-mini);
+            font-weight: 500;
+            background: var(--bg-hover);
+            color: var(--text-soft);
+        }
+        .status-pill .pulse {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--danger);
+            flex-shrink: 0;
+        }
+        .status-pill.on .pulse {
+            background: var(--success);
+            box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.6);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.6); }
+            70% { box-shadow: 0 0 0 6px rgba(52, 199, 89, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+        }
+
+        /* 主题切换图标按钮 */
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            transition: background 0.15s;
+        }
+        .icon-btn:active { background: var(--bg-press); }
+        .icon-btn svg { width: 18px; height: 18px; display: block; }
+
+        /* ─── 内容区 ─────────────────────────── */
+        main {
+            min-height: calc(100vh - var(--header-h) - var(--tab-h));
+            min-height: 100dvh;
+            padding-bottom: calc(var(--tab-h) + 16px);
+        }
+        .tab-content { display: none; }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.18s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: var(--fs-mini);
+            font-weight: 600;
+            color: var(--text-soft);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 4px;
+            margin: 18px 4px 8px;
+        }
+        .section-title:first-child { margin-top: 12px; }
+
+        /* ─── 卡片/列表组(iOS Inset Grouped) ─── */
+        .list-group {
+            background: var(--bg);
+            border-radius: var(--radius);
+            margin: 0 16px 8px;
+            overflow: hidden;
+        }
+        .list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            min-height: 50px;
+            position: relative;
+            background: var(--bg);
+            transition: background 0.12s;
+        }
+        .list-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 16px;
+            right: 0;
+            bottom: 0;
+            height: 1px;
+            background: var(--hairline);
+        }
+        .list-item:active { background: var(--bg-hover); }
+
+        .li-main { flex: 1; min-width: 0; }
+        .li-title {
+            font-size: var(--fs-body);
+            font-weight: 500;
+            word-break: break-word;
+            line-height: 1.35;
+        }
+        .li-sub {
+            font-size: var(--fs-foot);
+            color: var(--text-soft);
+            margin-top: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .li-meta {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .tag {
+            font-size: var(--fs-mini);
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--bg-soft);
+            color: var(--text-soft);
+            font-weight: 500;
+        }
+        .tag.primary { background: var(--primary-soft); color: var(--primary); }
+        .tag.warn { background: rgba(255, 149, 0, 0.12); color: var(--warning); }
+        .tag.ok { background: rgba(52, 199, 89, 0.12); color: var(--success); }
+        .chev {
+            flex-shrink: 0;
+            color: var(--text-mute);
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        /* ─── 待办勾选 ─────────────────────── */
+        .todo-item { cursor: pointer; align-items: flex-start; }
+        .todo-check {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--text-mute);
+            border-radius: 7px;
+            flex-shrink: 0;
+            margin-top: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.18s;
+            background: transparent;
+        }
+        .todo-check.done {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        .todo-check.done svg { opacity: 1; }
+        .todo-check svg {
+            width: 13px;
+            height: 13px;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .todo-item.done .li-title {
+            text-decoration: line-through;
+            color: var(--text-soft);
+        }
+
+        /* ─── 分组 chips ───────────────────── */
+        .chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 10px 16px 6px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            /* 吸顶：待办页 chips 紧贴 header 下方（无搜索栏），与 .search-wrap 同位 */
+            position: sticky;
+            top: var(--header-h);
+            z-index: 5;
+            background: var(--bg-soft);
+        }
+        .chip {
+            flex-shrink: 0;
+            height: 30px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: var(--bg);
+            font-size: var(--fs-foot);
+            color: var(--text-soft);
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s;
+            border: 1px solid var(--hairline);
+        }
+        .chip:active { transform: scale(0.94); }
+        .chip.active {
+            background: var(--text);
+            color: var(--bg);
+            border-color: var(--text);
+        }
+        .chip .count {
+            font-size: var(--fs-mini);
+            opacity: 0.7;
+        }
+
+        /* ─── 搜索栏 ─────────────────────── */
+        .search-wrap {
+            padding: 8px 16px 10px;
+            position: sticky;
+            top: calc(var(--header-h));
+            z-index: 5;
+            background: var(--bg-soft);
+        }
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg);
+            border-radius: 11px;
+            padding: 0 10px;
+            height: 38px;
+            border: 1px solid var(--hairline);
+        }
+        .search-bar svg { width: 16px; height: 16px; color: var(--text-soft); flex-shrink: 0; }
+        .search-bar input {
+            flex: 1;
+            border: none;
+            background: none;
+            font-size: var(--fs-body);
+            color: var(--text);
+            outline: none;
+        }
+        .search-bar input::placeholder { color: var(--text-soft); }
+        .search-bar .clear {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--text-mute);
+            color: var(--bg);
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .search-bar .clear.show { display: flex; }
+
+        /* ─── 浮动按钮 FAB ─────────────── */
+        .fab {
+            position: fixed;
+            right: 18px;
+            bottom: calc(var(--tab-h) + 16px);
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            box-shadow: var(--shadow-fab);
+            z-index: 15;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s;
+        }
+        .fab.show { display: flex; }
+        .fab:active { transform: scale(0.9); background: var(--primary-press); }
+        .fab svg { width: 24px; height: 24px; }
+
+        /* ─── 底部 Tab Bar ─────────────── */
+        nav.tabbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: var(--tab-h);
+            padding-bottom: var(--safe-bottom);
+            background: var(--bg-soft);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-top: 1px solid var(--hairline);
+            display: flex;
+            z-index: 20;
+        }
+        nav.tabbar button {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            color: var(--text-mute);
+            font-size: 10px;
+            font-weight: 500;
+            padding-top: 6px;
+            transition: color 0.15s;
+        }
+        nav.tabbar button svg {
+            width: 26px;
+            height: 26px;
+            transition: transform 0.15s;
+        }
+        nav.tabbar button.active { color: var(--primary); }
+        nav.tabbar button.active svg { transform: scale(1.05); }
+
+        /* ─── 下拉刷新提示 ─────────────── */
+        .ptr-hint {
+            position: absolute;
+            left: 0; right: 0;
+            top: 0;
+            height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-soft);
+            font-size: var(--fs-foot);
+            overflow: hidden;
+            transition: height 0.2s ease;
+        }
+        .ptr-hint.show { height: 36px; }
+        .ptr-hint svg { width: 16px; height: 16px; margin-right: 6px; animation: spin 0.9s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── 空状态 ─────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 56px 24px 32px;
+            color: var(--text-soft);
+        }
+        .empty-state .emoji {
+            font-size: 44px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+            filter: grayscale(0.3);
+        }
+        .empty-state .title {
+            font-size: var(--fs-body);
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+        .empty-state .desc {
+            font-size: var(--fs-foot);
+            color: var(--text-soft);
+        }
+
+        /* ─── 加载骨架 ─────────────── */
+        .skeleton-list { padding: 8px 16px; }
+        .skeleton {
+            background: var(--bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .sk-box {
+            background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-press) 50%, var(--bg-hover) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.3s infinite;
+            border-radius: 6px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .sk-circle { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; }
+        .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .sk-line { height: 13px; width: 100%; }
+        .sk-line.short { width: 50%; }
+
+        /* ─── Toast ─────────────── */
+        .toast {
+            position: fixed;
+            top: calc(var(--safe-top) + 12px);
+            left: 50%;
+            transform: translate(-50%, -120%);
+            background: rgba(0, 0, 0, 0.88);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-size: var(--fs-foot);
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+            pointer-events: none;
+            z-index: 200;
+            max-width: 80vw;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .toast.err { background: var(--danger); }
+
+        /* ─── 模态层(底部 Sheet) ─────────────── */
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            z-index: 100;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .modal-mask.show {
+            display: flex;
+            opacity: 1;
+        }
+        .modal {
+            background: var(--bg);
+            width: 100%;
+            max-width: 560px;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: 8px 16px calc(12px + var(--safe-bottom));
+            max-height: 88vh;
+            /* flex 列布局：head/meta 固定顶部、body 单独滚动、btn-row 固定底部 */
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.28s cubic-bezier(0.2, 0.85, 0.3, 1);
+            overflow: hidden;
+        }
+        .modal-mask.show .modal { transform: translateY(0); }
+        .modal-handle {
+            width: 36px;
+            height: 5px;
+            background: var(--text-mute);
+            opacity: 0.4;
+            border-radius: 999px;
+            margin: 4px auto 16px;
+            flex-shrink: 0;
+        }
+        .modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            flex-shrink: 0;
+        }
+        .modal-title { font-size: 17px; font-weight: 700; }
+        .modal-close {
+            color: var(--primary);
+            font-size: var(--fs-body);
+            font-weight: 500;
+            padding: 4px 0 4px 12px;
+        }
+        .modal-meta {
+            font-size: 12px;
+            color: var(--text-3);
+            padding: 0 0 4px;
+            min-height: 16px;
+            flex-shrink: 0;
+        }
+        .note-pre {
+            font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+        }
+        /* ─── Markdown 渲染样式 ─── */
+        .md-body { font-size: 14px; line-height: 1.7; }
+        .md-body > *:first-child { margin-top: 0; }
+        .md-body > *:last-child { margin-bottom: 0; }
+        .md-body h1, .md-body h2, .md-body h3, .md-body h4 {
+            margin: 1.2em 0 0.5em; font-weight: 600; line-height: 1.3;
+        }
+        .md-body h1 { font-size: 1.5em; }
+        .md-body h2 { font-size: 1.3em; }
+        .md-body h3 { font-size: 1.15em; }
+        .md-body h4 { font-size: 1em; }
+        .md-body p { margin: 0.5em 0; }
+        .md-body ul, .md-body ol { margin: 0.5em 0; padding-left: 1.5em; }
+        .md-body li { margin: 0.2em 0; }
+        .md-body code {
+            font-family: 'SF Mono', Consolas, monospace; font-size: 0.88em;
+            background: var(--bg-3, rgba(0,0,0,0.06)); padding: 1px 5px; border-radius: 3px;
+        }
+        :root.dark .md-body code { background: rgba(255,255,255,0.1); }
+        .md-body pre {
+            background: var(--bg-3, rgba(0,0,0,0.06)); padding: 10px 12px; border-radius: 6px;
+            overflow-x: auto; margin: 0.6em 0;
+        }
+        :root.dark .md-body pre { background: rgba(255,255,255,0.08); }
+        .md-body pre code { background: none; padding: 0; font-size: 12.5px; }
+        .md-body blockquote {
+            margin: 0.6em 0; padding: 0.4em 0.9em; border-left: 3px solid var(--text-3, #ccc);
+            color: var(--text-2, #666); background: var(--bg-2, rgba(0,0,0,0.03));
+        }
+        .md-body hr { border: none; border-top: 1px solid var(--border, #e0e0e0); margin: 1em 0; }
+        .md-body a { color: var(--primary, #007aff); text-decoration: none; word-break: break-all; }
+        .md-body strong { font-weight: 600; }
+        .md-body table {
+            border-collapse: collapse; margin: 0.6em 0; font-size: 0.92em; display: block; overflow-x: auto;
+        }
+        .md-body th, .md-body td { border: 1px solid var(--border, #e0e0e0); padding: 4px 8px; text-align: left; }
+        .md-body th { background: var(--bg-2, rgba(0,0,0,0.04)); font-weight: 600; }
+        .md-body img { max-width: 100%; border-radius: 4px; }
+        .modal-body {
+            font-size: var(--fs-body);
+            line-height: 1.6;
+            word-break: break-word;
+            white-space: pre-wrap;
+            padding: 12px 0;
+            color: var(--text);
+            /* flex 滚动区：内容超长时这里滚，btn-row 固定底部 */
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* md-body 里 pre 不再自己滚（modal-body 已是滚动区），避免双层滚动 */
+        .md-body pre { overflow-x: auto; }
+        .field {
+            margin-bottom: 12px;
+        }
+        .field label {
+            display: block;
+            font-size: var(--fs-foot);
+            color: var(--text-soft);
+            font-weight: 500;
+            margin-bottom: 6px;
+            padding-left: 4px;
+        }
+        .field input, .field textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 11px;
+            border: 1px solid var(--hairline);
+            background: var(--bg-soft);
+            color: var(--text);
+            font-size: var(--fs-body);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .field input:focus, .field textarea:focus {
+            border-color: var(--primary);
+            background: var(--bg);
+        }
+        .field textarea {
+            min-height: 120px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            /* 固定底部，不被压缩 */
+            flex-shrink: 0;
+            padding-top: 10px;
+            border-top: 1px solid var(--border, rgba(0,0,0,0.08));
+        }
+        .btn {
+            flex: 1;
+            height: 46px;
+            border-radius: 12px;
+            font-size: var(--fs-body);
+            font-weight: 600;
+            transition: opacity 0.12s, transform 0.12s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-cancel {
+            background: var(--bg-soft);
+            color: var(--text);
+        }
+        .btn-ok {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn:disabled { opacity: 0.5; }
+
+        /* ─── 设置页表单 ─────────────── */
+        .setting-list {
+            margin: 8px 16px;
+            background: var(--bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .setting-list .list-item:last-child::after { display: none; }
+        .setting-list label {
+            font-size: var(--fs-body);
+            color: var(--text);
+            font-weight: 400;
+            flex-shrink: 0;
+            min-width: 96px;
+        }
+        .setting-list input {
+            flex: 1;
+            border: none;
+            background: none;
+            font-size: var(--fs-body);
+            color: var(--text);
+            outline: none;
+            text-align: right;
+        }
+        .setting-list input::placeholder { color: var(--text-mute); }
+        .setting-hint {
+            margin: 8px 16px 4px;
+            font-size: var(--fs-foot);
+            color: var(--text-soft);
+            line-height: 1.5;
+        }
+        .setting-footer {
+            padding: 0 16px;
+            margin-top: 16px;
+        }
+        .setting-footer .btn-ok {
+            width: 100%;
+            flex: none;
+            height: 48px;
+            border-radius: 13px;
+        }
+        .help-block {
+            margin: 16px;
+            padding: 14px 16px;
+            background: var(--primary-soft);
+            border-radius: var(--radius);
+            font-size: var(--fs-foot);
+            color: var(--text);
+            line-height: 1.55;
+        }
+        .help-block strong { color: var(--primary); }
+        .conn-status {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .conn-status .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--danger);
+            flex-shrink: 0;
+        }
+        .conn-status.on .dot { background: var(--success); }
+        .conn-status .text { font-size: var(--fs-body); flex: 1; }
+        .conn-status .text small { display: block; color: var(--text-soft); font-size: var(--fs-foot); margin-top: 2px; }
+
+        /* 剪贴板项 */
+        .clip-item .li-title {
+            font-family: 'SF Mono', ui-monospace, Consolas, monospace;
+            font-size: 13px;
+            font-weight: 400;
+        }
+        .clip-icon {
+            width: 36px; height: 36px;
+            border-radius: 9px;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            background: var(--bg-soft);
+        }
+        .clip-time {
+            font-size: var(--fs-mini);
+            color: var(--text-mute);
+            flex-shrink: 0;
+        }
+        /* 图片缩略图（替代 🖼 图标）—— 60×60 方形圆角，加载失败回退 emoji */
+        .clip-thumb {
+            width: 44px; height: 44px;
+            border-radius: 9px;
+            flex-shrink: 0;
+            object-fit: cover;
+            background: var(--bg-soft);
+        }
+        .clip-thumb-fallback {
+            width: 36px; height: 36px;
+            border-radius: 9px;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            background: var(--bg-soft);
+        }
+
+        /* 图片大图弹层：黑色半透 + 居中大图 */
+        .modal.image-modal .modal {
+            background: transparent;
+            box-shadow: none;
+            max-width: none;
+            width: auto;
+            padding: 0;
+        }
+        .modal.image-modal .modal-head,
+        .modal.image-modal .modal-handle { display: none; }
+        .image-viewer {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 60vh;
+        }
+        .image-viewer img {
+            max-width: 94vw;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            -webkit-touch-callout: default; /* 允许长按保存 */
+        }
+        .image-viewer .img-close {
+            position: absolute; top: -44px; right: 0;
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border: none;
+            font-size: 22px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* 文件列表弹层：每行一个文件 + 下载按钮 */
+        .file-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 0;
+        }
+        .file-row:not(:last-child) { border-bottom: 1px solid var(--hairline, #eee); }
+        .file-row .f-icon {
+            width: 36px; height: 36px; border-radius: 9px;
+            background: var(--bg-soft);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
+        .file-row .f-main { flex: 1; min-width: 0; }
+        .file-row .f-name {
+            font-size: 14px; font-weight: 500;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .file-row .f-meta { font-size: var(--fs-mini); color: var(--text-mute); margin-top: 2px; }
+        .file-row .f-dl {
+            flex-shrink: 0;
+            height: 32px; padding: 0 14px;
+            border-radius: 16px;
+            background: var(--primary); color: #fff;
+            border: none; font-size: 13px; font-weight: 500;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .file-row .f-dl:active { transform: scale(0.94); }
+        .file-row .f-dl[disabled] { opacity: 0.4; }
+        .file-row .f-dl.folder { background: var(--bg-soft); color: var(--text-mute); }
+
+        /* 上传进度小条 */
+        .upload-progress {
+            height: 3px; background: var(--bg-soft);
+            border-radius: 2px; overflow: hidden;
+            margin-top: 12px; display: none;
+        }
+        .upload-progress.show { display: block; }
+        .upload-progress > div {
+            height: 100%; background: var(--primary);
+            width: 0%; transition: width 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部大标题栏 -->
+    <header>
+        <div class="header-bar">
+            <h1 id="pageTitle">剪贴板</h1>
+            <span class="status-pill" id="connPill">
+                <span class="pulse"></span>
+                <span id="connPillText">未连接</span>
+            </span>
+            <button class="icon-btn" id="themeBtn" title="切换主题" aria-label="切换主题">
+                <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- 剪贴板 -->
+        <div class="tab-content active" id="tab-clip">
+            <div class="search-wrap">
+                <div class="search-bar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                    </svg>
+                    <input type="search" id="clipSearch" placeholder="搜索剪贴板历史" enterkeyhint="search" />
+                    <span class="clear" id="clipClear">×</span>
+                </div>
+            </div>
+            <div id="clipList"></div>
+        </div>
+
+        <!-- 待办 -->
+        <div class="tab-content" id="tab-todo">
+            <div class="chips" id="groupChips"></div>
+            <div id="todoList"></div>
+        </div>
+
+        <!-- 笔记 -->
+        <div class="tab-content" id="tab-note">
+            <div class="search-wrap">
+                <div class="search-bar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                    </svg>
+                    <input type="search" id="noteSearch" placeholder="搜索笔记标题或内容" enterkeyhint="search" />
+                    <span class="clear" id="noteClear">×</span>
+                </div>
+            </div>
+            <div id="noteList">
+                <div class="empty-state">
+                    <div class="emoji">📝</div>
+                    <div class="title">搜索你的笔记</div>
+                    <div class="desc">输入关键词即可查找 uTools 笔记</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置 -->
+        <div class="tab-content" id="tab-setting">
+            <div class="section-title">服务器</div>
+            <div class="setting-list">
+                <div class="list-item">
+                    <label>PC 地址</label>
+                    <input type="url" id="serverUrl" placeholder="留空 = 同源(默认)" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" />
+                </div>
+                <div class="list-item">
+                    <label>访问密钥</label>
+                    <input type="password" id="bridgeKey" placeholder="未设置留空" autocapitalize="off" autocorrect="off" spellcheck="false" />
+                </div>
+            </div>
+            <div class="setting-hint">默认无需填写:手机直接访问 PC 桥接服务地址即可(同源)。仅当把本界面托管到其他服务器时才需填 PC 地址。</div>
+
+            <div class="section-title">连接状态</div>
+            <div class="setting-list">
+                <div class="conn-status" id="connStatusBox">
+                    <span class="dot"></span>
+                    <div class="text">
+                        <span id="connStatusText">未连接</span>
+                        <small id="connStatusMsg">保存后会自动测试连接</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-footer">
+                <button class="btn btn-ok" id="saveSetting">保存并测试</button>
+            </div>
+
+            <div class="help-block">
+                <strong>如何使用?</strong><br />
+                1. 在 PC 端 uTools 打开「插件手机同步」并启动服务<br />
+                2. 手机(同一 WiFi)浏览器访问插件显示的地址,如 http://192.168.1.100:3721<br />
+                3. 默认无需配置,直接打开即可使用。可选「添加到主屏幕」当 App 用<br />
+                4. 如连接失败,检查 PC 桥接是否已启动,或在此手动填写 PC 地址
+            </div>
+        </div>
+    </main>
+
+    <!-- 浮动按钮 -->
+    <button class="fab" id="fab" aria-label="新增">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14" />
+        </svg>
+    </button>
+
+    <!-- 底部 Tab Bar -->
+    <nav class="tabbar">
+        <button class="active" data-tab="clip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" />
+            </svg>
+            <span>剪贴板</span>
+        </button>
+        <button data-tab="todo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            <span>待办</span>
+        </button>
+        <button data-tab="note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+            </svg>
+            <span>笔记</span>
+        </button>
+        <button data-tab="setting">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            <span>设置</span>
+        </button>
+    </nav>
+
+    <!-- 模态:笔记详情 -->
+    <div class="modal-mask" id="noteModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title" id="noteModalTitle">笔记</div>
+                <button class="modal-close" data-close="noteModal">关闭</button>
+            </div>
+            <div class="modal-meta" id="noteModalMeta"></div>
+            <div class="modal-body" id="noteModalBody">加载中…</div>
+            <div class="btn-row">
+                <button class="btn btn-cancel" id="noteToggleView" style="display:none">看源码</button>
+                <button class="btn btn-ok" id="copyNoteBtn">复制全文</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态:新建待办 -->
+    <div class="modal-mask" id="todoModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title">新建待办</div>
+                <button class="modal-close" data-close="todoModal">取消</button>
+            </div>
+            <div class="field">
+                <label>内容</label>
+                <input type="text" id="newTodoContent" placeholder="例如:买咖啡豆" />
+            </div>
+            <div class="field">
+                <label>分组(可选)</label>
+                <input type="text" id="newTodoGroup" placeholder="例如:今日" />
+            </div>
+            <div class="field">
+                <label>截止日期(可选)</label>
+                <input type="date" id="newTodoDue" />
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-cancel" data-close="todoModal">取消</button>
+                <button class="btn btn-ok" id="createTodoBtn">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态:待办详情 -->
+    <div class="modal-mask" id="todoDetailModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title" id="todoDetailTitle">待办</div>
+                <button class="modal-close" data-close="todoDetailModal">关闭</button>
+            </div>
+            <div class="modal-meta" id="todoDetailMeta"></div>
+            <div class="modal-body" id="todoDetailBody">加载中…</div>
+            <div class="btn-row">
+                <button class="btn btn-ok" id="todoDetailToggle">标记为已完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态:写入剪贴板 -->
+    <div class="modal-mask" id="clipWriteModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title">写入 PC 剪贴板</div>
+                <button class="modal-close" data-close="clipWriteModal">关闭</button>
+            </div>
+            <div class="modal-meta">输入的内容会写入 uTools 剪贴板历史，并复制到 PC 系统剪贴板。</div>
+            <div class="field">
+                <textarea id="clipWriteText" placeholder="输入要写入的文本…"></textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-ok" id="clipWriteOk">写入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态:图片大图查看（黑色半透 + 居中大图） -->
+    <div class="modal-mask" id="imageModal">
+        <div class="modal image-modal">
+            <div class="image-viewer">
+                <button class="img-close" data-close="imageModal">×</button>
+                <img id="imageModalImg" alt="剪贴板图片" />
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态:剪贴板文件列表（下载入口） -->
+    <div class="modal-mask" id="clipFilesModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title">文件列表</div>
+                <button class="modal-close" data-close="clipFilesModal">关闭</button>
+            </div>
+            <div id="clipFilesBody" style="padding-bottom:8px;"></div>
+        </div>
+    </div>
+
+    <!-- 模态:剪贴板写入/上传选择（FAB 入口） -->
+    <div class="modal-mask" id="clipActionModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title">发送到 PC</div>
+                <button class="modal-close" data-close="clipActionModal">取消</button>
+            </div>
+            <div class="modal-meta">选择要把什么发到 PC 剪贴板。</div>
+            <div class="btn-row" style="flex-direction:column;gap:10px;">
+                <button class="btn btn-ok" id="clipActionWrite" style="width:100%;">写入文本</button>
+                <button class="btn" id="clipActionUpload" style="width:100%;background:var(--bg-soft);color:var(--text);">上传图片 / 文件</button>
+            </div>
+            <div class="upload-progress" id="uploadProgress"><div></div></div>
+        </div>
+    </div>
+    <!-- 隐藏文件选择 input，上传用 -->
+    <input type="file" id="clipUploadInput" accept="image/*,*/*" style="display:none;" />
+
+    <!-- 模态:新建笔记 -->
+    <div class="modal-mask" id="noteCreateModal">
+        <div class="modal">
+            <div class="modal-handle"></div>
+            <div class="modal-head">
+                <div class="modal-title">新建笔记</div>
+                <button class="modal-close" data-close="noteCreateModal">取消</button>
+            </div>
+            <div class="field">
+                <label>标题</label>
+                <input type="text" id="newNoteTitle" placeholder="笔记标题" />
+            </div>
+            <div class="field">
+                <label>正文(Markdown)</label>
+                <textarea id="newNoteContent" placeholder="支持 Markdown 语法"></textarea>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-cancel" data-close="noteCreateModal">取消</button>
+                <button class="btn btn-ok" id="createNoteBtn">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        /* ─── 配置存取 ─────────────────────── */
+        const cfg = {
+            get url() { return localStorage.getItem('serverUrl') || ''; },
+            set url(v) { localStorage.setItem('serverUrl', v); },
+            get key() { return localStorage.getItem('bridgeKey') || ''; },
+            set key(v) { localStorage.setItem('bridgeKey', v); },
+        };
+
+        /* ─── 主题 ─────────────────────── */
+        function applyTheme(theme) {
+            const isDark = theme === 'dark';
+            document.documentElement.classList.toggle('dark', isDark);
+            localStorage.setItem('theme', theme);
+            const meta = document.getElementById('themeColorMeta');
+            meta.setAttribute('content', isDark ? '#000000' : '#f2f3f5');
+            const icon = document.getElementById('themeIcon');
+            icon.innerHTML = isDark
+                ? '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'
+                : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />';
+        }
+        (function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            applyTheme(saved || prefers);
+        })();
+        document.getElementById('themeBtn').addEventListener('click', () => {
+            const cur = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            applyTheme(cur === 'dark' ? 'light' : 'dark');
+        });
+
+        /* ─── Toast / Modal ─────────────────── */
+        function toast(msg, isErr) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (isErr ? ' err' : '');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => { t.className = 'toast' + (isErr ? ' err' : ''); }, 2200);
+        }
+        function openModal(id) { document.getElementById(id).classList.add('show'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+        document.querySelectorAll('[data-close]').forEach((b) => {
+            b.addEventListener('click', () => closeModal(b.dataset.close));
+        });
+        // 点遮罩关闭
+        document.querySelectorAll('.modal-mask').forEach((m) => {
+            m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('show'); });
+        });
+
+        /* ─── API 封装 ─────────────────────── */
+        async function api(path, options) {
+            options = options || {};
+            // 合并设计：PWA 与 /api 同源。配置了就用绝对地址，没配就同源（空串→相对路径）
+            const base = cfg.url ? cfg.url.replace(/\/$/, '') : '';
+            const headers = { 'Content-Type': 'application/json' };
+            if (cfg.key) headers['x-bridge-key'] = cfg.key;
+            try {
+                const res = await fetch(base + path, {
+                    ...options,
+                    headers: Object.assign({}, headers, options.headers || {}),
+                });
+                const txt = await res.text();
+                let json;
+                try { json = JSON.parse(txt); } catch (e) {
+                    throw new Error('返回不是 JSON (HTTP ' + res.status + ')');
+                }
+                if (!json.ok) throw new Error(json.error || ('HTTP ' + res.status));
+                return json.data;
+            } catch (e) {
+                if (e.message === 'Failed to fetch' || e.name === 'TypeError') {
+                    setConnStatus(false, '无法连接 PC，请检查地址、网络和密钥');
+                }
+                throw e;
+            }
+        }
+
+        function setConnStatus(ok, msg) {
+            const pill = document.getElementById('connPill');
+            pill.className = 'status-pill' + (ok ? ' on' : '');
+            document.getElementById('connPillText').textContent = ok ? '已连接' : '未连接';
+            const box = document.getElementById('connStatusBox');
+            if (box) box.className = 'conn-status' + (ok ? ' on' : '');
+            const t = document.getElementById('connStatusText');
+            if (t) t.textContent = ok ? '已连接' : '未连接';
+            const m = document.getElementById('connStatusMsg');
+            if (m) m.textContent = msg || (ok ? '可以正常使用' : '请检查 PC 地址和密钥');
+        }
+        async function checkConn() {
+            try {
+                await api('/api/health');
+                setConnStatus(true);
+                return true;
+            } catch (e) {
+                setConnStatus(false);
+                return false;
+            }
+        }
+
+        /* ─── 兜底:把各种形态的返回统一成数组 ── */
+        function toArray(data) {
+            if (Array.isArray(data)) return data;
+            if (!data) return [];
+            // 待办真实返回 tasks；剪贴板是 items；笔记兜底 notes/list
+            if (Array.isArray(data.tasks)) return data.tasks;
+            if (Array.isArray(data.todos)) return data.todos;
+            if (Array.isArray(data.items)) return data.items;
+            if (Array.isArray(data.notes)) return data.notes;
+            if (Array.isArray(data.list)) return data.list;
+            if (Array.isArray(data.data)) return data.data;
+            return [];
+        }
+
+        /* ─── Tab 切换 ─────────────────────── */
+        const TAB_TITLES = { todo: '待办', note: '笔记', clip: '剪贴板', setting: '设置' };
+        function switchTab(name) {
+            document.querySelectorAll('nav.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+            document.querySelectorAll('.tab-content').forEach((t) => t.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            document.getElementById('pageTitle').textContent = TAB_TITLES[name] || '';
+            // FAB:todo/note/clip 显示（clip 时图标换成写入的笔形）
+            const fab = document.getElementById('fab');
+            fab.classList.toggle('show', name === 'todo' || name === 'note' || name === 'clip');
+            // 不同 tab 下 FAB 图标：clip=写入(笔)，其余=新增(+)
+            const fabIcon = fab.querySelector('svg');
+            if (fabIcon) {
+                fabIcon.innerHTML = name === 'clip'
+                    ? '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
+                    : '<path d="M12 5v14M5 12h14"/>';
+            }
+
+            if (name === 'todo') loadTodos();
+            if (name === 'note' && !window._noteLoaded) { window._noteLoaded = true; searchNotes(); }
+            if (name === 'clip' && !window._clipLoaded) { window._clipLoaded = true; loadClipboard(); }
+        }
+        document.querySelectorAll('nav.tabbar button').forEach((b) => {
+            b.addEventListener('click', () => switchTab(b.dataset.tab));
+        });
+
+        /* ─── 骨架屏 ─────────────────────── */
+        function skeletonList(n) {
+            n = n || 4;
+            let out = '<div class="skeleton-list">';
+            for (let i = 0; i < n; i++) {
+                out += '<div class="skeleton"><div class="sk-box sk-circle"></div><div class="sk-lines"><div class="sk-box sk-line"></div><div class="sk-box sk-line short"></div></div></div>';
+            }
+            return out + '</div>';
+        }
+
+        function emptyState(emoji, title, desc) {
+            return `<div class="empty-state"><div class="emoji">${emoji}</div><div class="title">${escapeHtml(title)}</div><div class="desc">${escapeHtml(desc || '')}</div></div>`;
+        }
+
+        /* ─── 待办 ─────────────────────── */
+        let currentGroup = '';
+        let groups = [];
+        // 最近一次列表加载结果，供 openTodoDetail 就地查 id，避免再发一次请求
+        let lastTodos = [];
+
+        async function loadGroups() {
+            try {
+                const data = await api('/api/todo/groups');
+                groups = (data && data.groups) ? data.groups : (Array.isArray(data) ? data : []);
+                const el = document.getElementById('groupChips');
+                el.innerHTML = '<div class="chip ' + (currentGroup === '' ? 'active' : '') + '" data-g="">全部</div>' +
+                    groups.map((g) => {
+                        const name = typeof g === 'string' ? g : (g.name || g.title || '');
+                        return `<div class="chip ${currentGroup === name ? 'active' : ''}" data-g="${escapeAttr(name)}">${escapeHtml(name)}</div>`;
+                    }).join('');
+                el.querySelectorAll('.chip').forEach((c) => {
+                    c.addEventListener('click', () => {
+                        currentGroup = c.dataset.g;
+                        loadGroups();
+                        loadTodos();
+                    });
+                });
+            } catch (e) { /* loadTodos 会报错 */ }
+        }
+
+        async function loadTodos() {
+            const el = document.getElementById('todoList');
+            el.innerHTML = skeletonList(5);
+            try {
+                if (!groups.length) await loadGroups();
+                const params = new URLSearchParams();
+                if (currentGroup) params.set('group', currentGroup);
+                const data = await api('/api/todos' + (params.toString() ? '?' + params : ''));
+                // 真实返回 {tasks:[...]},项字段 text/completed/group;兼容旧假设 content/status
+                const todos = toArray(data).filter((t) => t && (t.text != null || t.content != null));
+                if (!todos.length) {
+                    el.innerHTML = emptyState('✓', '没有待办', currentGroup ? ('「' + currentGroup + '」分组下没有待办') : '点击右下角按钮新建一个');
+                    return;
+                }
+                // 已完成靠后。completed 是布尔;旧 status==='done' 也兼容
+                todos.sort((a, b) => {
+                    const ad = a.completed || a.status === 'done' ? 1 : 0;
+                    const bd = b.completed || b.status === 'done' ? 1 : 0;
+                    return ad - bd;
+                });
+                lastTodos = todos;
+                el.innerHTML = '<div class="list-group">' + todos.map(renderTodo).join('') + '</div>';
+                // 方框：点击勾选；文字区：点击查看详情
+                el.querySelectorAll('.todo-check').forEach((box) => {
+                    box.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止冒泡到详情
+                        const item = box.closest('.todo-item');
+                        toggleTodo(item.dataset.id, item.dataset.status);
+                    });
+                });
+                el.querySelectorAll('.todo-item .li-main').forEach((main) => {
+                    main.addEventListener('click', () => {
+                        const item = main.closest('.todo-item');
+                        openTodoDetail(item.dataset.id);
+                    });
+                });
+            } catch (e) {
+                el.innerHTML = emptyState('⚠️', '加载失败', e.message);
+            }
+        }
+
+        function renderTodo(t) {
+            // 兼容真实字段 completed/text 和旧假设 status/content
+            const done = t.completed === true || t.status === 'done';
+            const text = t.text != null ? t.text : (t.content || '');
+            const group = t.group ? `<span class="tag primary">${escapeHtml(t.group)}</span>` : '';
+            // data-status 用 done/pending 统一,toggleTodo 据此翻转
+            return `<div class="list-item todo-item ${done ? 'done' : ''}" data-id="${escapeAttr(t.id)}" data-status="${done ? 'done' : 'pending'}">
+                <div class="todo-check ${done ? 'done' : ''}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div class="li-main">
+                    <div class="li-title">${escapeHtml(text)}</div>
+                    ${group ? `<div class="li-meta">${group}</div>` : ''}
+                </div>
+            </div>`;
+        }
+
+        async function toggleTodo(id, status) {
+            const newStatus = status === 'done' ? 'pending' : 'done';
+            try {
+                await api('/api/todos/' + encodeURIComponent(id), {
+                    method: 'PATCH',
+                    body: JSON.stringify({ patch: { status: newStatus } }),
+                });
+                loadTodos();
+                toast(newStatus === 'done' ? '已完成' : '已恢复');
+            } catch (e) { toast(e.message, true); }
+        }
+
+        // 点击待办文字区打开详情：直接用已缓存的列表数据，不重复请求
+        function openTodoDetail(id) {
+            const t = lastTodos.find((x) => String(x.id) === String(id));
+            if (!t) return toast('找不到这条待办', true);
+            const done = t.completed === true || t.status === 'done';
+            const text = t.text != null ? t.text : (t.content || '');
+            document.getElementById('todoDetailTitle').textContent = done ? '待办(已完成)' : '待办';
+            document.getElementById('todoDetailBody').innerHTML = '<div class="md-body"><p style="font-size:15px;line-height:1.6;">' + escapeHtml(text) + '</p></div>';
+            const meta = document.getElementById('todoDetailMeta');
+            const bits = [];
+            if (t.group) bits.push('<span class="tag primary">' + escapeHtml(t.group) + '</span>');
+            if (done) bits.push('<span class="tag ok">已完成</span>'); else bits.push('<span class="tag warn">进行中</span>');
+            if (t.created_at) bits.push('<span class="tag">创建 ' + escapeHtml(formatDate(t.created_at)) + '</span>');
+            if (t.completed_at) bits.push('<span class="tag">完成 ' + escapeHtml(formatDate(t.completed_at)) + '</span>');
+            meta.innerHTML = bits.join(' ');
+            // 底部切换按钮
+            const btn = document.getElementById('todoDetailToggle');
+            btn.textContent = done ? '标记为未完成' : '标记为已完成';
+            btn.onclick = () => {
+                closeModal('todoDetailModal');
+                toggleTodo(id, done ? 'done' : 'pending');
+            };
+            openModal('todoDetailModal');
+        }
+
+        // 打开新建待办：分组自动填当前选中的分组（选了"全部"则留空让用户自己选）
+        function openTodoCreate() {
+            document.getElementById('newTodoContent').value = '';
+            document.getElementById('newTodoGroup').value = currentGroup || '';
+            document.getElementById('newTodoDue').value = '';
+            openModal('todoModal');
+            setTimeout(() => document.getElementById('newTodoContent').focus(), 300);
+        }
+
+        document.getElementById('createTodoBtn').addEventListener('click', async () => {
+            const content = document.getElementById('newTodoContent').value.trim();
+            if (!content) return toast('请输入内容', true);
+            const group = document.getElementById('newTodoGroup').value.trim();
+            const due = document.getElementById('newTodoDue').value;
+            const btn = document.getElementById('createTodoBtn');
+            btn.disabled = true;
+            try {
+                const body = { content };
+                if (group) body.group = group;
+                if (due) body.dueAt = due;
+                await api('/api/todos', { method: 'POST', body: JSON.stringify(body) });
+                closeModal('todoModal');
+                document.getElementById('newTodoContent').value = '';
+                document.getElementById('newTodoGroup').value = '';
+                document.getElementById('newTodoDue').value = '';
+                toast('已创建');
+                loadTodos();
+            } catch (e) { toast(e.message, true); }
+            btn.disabled = false;
+        });
+
+        /* ─── 笔记 ─────────────────────── */
+        // 真实结构：search 返回 {notes:[{id,title,snippet,matchedField,createAt,updateAt,wordCount}], hasMore}
+        // 空 query 也合法——返回最近笔记，用于进 tab 时自动列出
+        async function searchNotes() {
+            const q = document.getElementById('noteSearch').value.trim();
+            const el = document.getElementById('noteList');
+            el.innerHTML = skeletonList(4);
+            try {
+                // 有 query 就按词搜，没 query 就列最近笔记
+                const url = q ? '/api/notes?q=' + encodeURIComponent(q) : '/api/notes?q=&limit=20';
+                const data = await api(url);
+                const notes = toArray(data).filter((n) => n && n.id != null);
+                if (!notes.length) {
+                    el.innerHTML = emptyState('🔍', q ? '无匹配笔记' : '还没有笔记', q ? '换个关键词试试' : '点击右下角 + 创建第一条');
+                    return;
+                }
+                el.innerHTML = '<div class="list-group">' + notes.map(renderNoteItem).join('') + '</div>';
+                el.querySelectorAll('.list-item').forEach((item) => {
+                    item.addEventListener('click', () => openNote(item.dataset.id));
+                });
+            } catch (e) {
+                el.innerHTML = emptyState('⚠️', '加载失败', e.message);
+            }
+        }
+
+        function renderNoteItem(n) {
+            const title = n.title || '(无标题)';
+            const snippet = n.snippet || n.summary || '';
+            const meta = [];
+            if (n.wordCount != null) meta.push(n.wordCount + ' 字');
+            if (n.updateAt) meta.push(formatDate(n.updateAt));
+            return `<div class="list-item" data-id="${escapeAttr(n.id)}">
+                <div class="li-main">
+                    <div class="li-title">${escapeHtml(title)}</div>
+                    ${snippet ? `<div class="li-sub">${escapeHtml(snippet.slice(0, 100))}</div>` : ''}
+                    ${meta.length ? `<div class="li-meta"><span class="tag">${meta.join(' · ')}</span></div>` : ''}
+                </div>
+                <span class="chev">›</span>
+            </div>`;
+        }
+
+        function formatDate(ts) {
+            if (!ts) return '';
+            const d = new Date(typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts);
+            const now = new Date();
+            const sameDay = d.toDateString() === now.toDateString();
+            if (sameDay) return d.toTimeString().slice(0, 5);
+            return (d.getMonth() + 1) + '/' + d.getDate();
+        }
+
+        // 真实结构：get 返回 {id,title,updateAt,content,mimeType:"text/markdown"}
+        async function openNote(id) {
+            openModal('noteModal');
+            const body = document.getElementById('noteModalBody');
+            const title = document.getElementById('noteModalTitle');
+            body.textContent = '加载中…';
+            title.textContent = '笔记';
+            let noteText = '';
+            try {
+                const data = await api('/api/notes/' + encodeURIComponent(id) + '?format=text');
+                // 兼容字符串或对象
+                if (typeof data === 'string') {
+                    noteText = data;
+                    title.textContent = '笔记';
+                } else if (data && typeof data === 'object') {
+                    noteText = data.content || data.text || data.body || '';
+                    title.textContent = data.title || '笔记';
+                    // 在正文上方显示更新时间
+                    if (data.updateAt) {
+                        const meta = document.getElementById('noteModalMeta');
+                        if (meta) meta.textContent = '更新于 ' + new Date(typeof data.updateAt === 'number' && data.updateAt < 1e12 ? data.updateAt * 1000 : data.updateAt).toLocaleString('zh-CN');
+                    }
+                } else {
+                    noteText = String(data == null ? '' : data);
+                }
+                // 用轻量 Markdown 解析器渲染（支持 标题/列表/代码/粗体斜体/链接/表格/引用）
+                body.innerHTML = '';
+                const mdDiv = document.createElement('div');
+                mdDiv.className = 'md-body';
+                mdDiv.innerHTML = renderMarkdown(noteText);
+                body.appendChild(mdDiv);
+                // 切换"渲染/源码"视图
+                let rawMode = false;
+                const toggleBtn = document.getElementById('noteToggleView');
+                if (toggleBtn) {
+                    toggleBtn.style.display = '';
+                    toggleBtn.textContent = '看源码';
+                    toggleBtn.onclick = () => {
+                        rawMode = !rawMode;
+                        body.innerHTML = '';
+                        if (rawMode) {
+                            const pre = document.createElement('pre');
+                            pre.className = 'note-pre';
+                            pre.textContent = noteText || '(空笔记)';
+                            body.appendChild(pre);
+                            toggleBtn.textContent = '看渲染';
+                        } else {
+                            const d = document.createElement('div');
+                            d.className = 'md-body';
+                            d.innerHTML = renderMarkdown(noteText);
+                            body.appendChild(d);
+                            toggleBtn.textContent = '看源码';
+                        }
+                    };
+                }
+                document.getElementById('copyNoteBtn').onclick = () => {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(noteText).then(() => toast('已复制全文'), () => toast('复制失败', true));
+                    } else {
+                        toast('当前浏览器不支持自动复制');
+                    }
+                };
+            } catch (e) {
+                body.textContent = '加载失败: ' + e.message;
+            }
+        }
+
+        const noteSearchInput = document.getElementById('noteSearch');
+        noteSearchInput.addEventListener('input', (e) => {
+            const has = !!e.target.value;
+            document.getElementById('noteClear').classList.toggle('show', has);
+            // 输入框被清空时（点原生 × 或手动删空），还原完整列表。
+            // 只在从「有值」变「空值」时触发，避免每次输入都重新请求。
+            if (!has && noteSearchInput._hadValue) searchNotes();
+            noteSearchInput._hadValue = has;
+        });
+        document.getElementById('noteClear').addEventListener('click', () => {
+            noteSearchInput.value = '';
+            document.getElementById('noteClear').classList.remove('show');
+            searchNotes();
+            noteSearchInput.focus();
+        });
+        noteSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchNotes();
+            }
+        });
+
+        document.getElementById('createNoteBtn').addEventListener('click', async () => {
+            const title = document.getElementById('newNoteTitle').value.trim();
+            const content = document.getElementById('newNoteContent').value.trim();
+            if (!title || !content) return toast('标题和内容都要填', true);
+            const btn = document.getElementById('createNoteBtn');
+            btn.disabled = true;
+            try {
+                await api('/api/notes', { method: 'POST', body: JSON.stringify({ title, content }) });
+                closeModal('noteCreateModal');
+                document.getElementById('newNoteTitle').value = '';
+                document.getElementById('newNoteContent').value = '';
+                toast('已创建');
+                window._noteLoaded = true;
+                searchNotes(); // 无论有没有搜索词都刷新列表
+            } catch (e) { toast(e.message, true); }
+            btn.disabled = false;
+        });
+
+        /* ─── 剪贴板 ─────────────────────── */
+        // 缓存最近一次列表结果，供点击时取 files 数组等结构（避免塞进 data-attr 的大字符串）
+        let clipItemsCache = [];
+        // 拼 /api/...?key= 形式的 URL：图片缩略图 <img src> 和文件下载 <a href> 无法带自定义头，
+        // 必须把 key 放进 query。同源时 cfg.key 已存 localStorage，这里只是为了 HTML 属性拼 URL。
+        function keyQuery() { return cfg.key ? ('?key=' + encodeURIComponent(cfg.key)) : ''; }
+        function withKey(apiPath) { return apiPath + (apiPath.indexOf('?') >= 0 ? '&' : '?') + (cfg.key ? ('key=' + encodeURIComponent(cfg.key)) : ''); }
+
+        async function loadClipboard(query) {
+            const el = document.getElementById('clipList');
+            el.innerHTML = skeletonList(4);
+            try {
+                let url = '/api/clipboard?limit=50';
+                if (query) url += '&query=' + encodeURIComponent(query);
+                const data = await api(url);
+                const items = toArray(data).filter((c) => c && c.id != null);
+                clipItemsCache = items; // 缓存供点击分发用
+                if (!items.length) {
+                    el.innerHTML = emptyState('📋', query ? '无匹配记录' : '暂无剪贴板历史', query ? '换个关键词试试' : '在 PC 上复制内容后会自动出现');
+                    return;
+                }
+                el.innerHTML = '<div class="list-group">' + items.map(renderClip).join('') + '</div>';
+                el.querySelectorAll('.clip-item').forEach((item) => {
+                    item.addEventListener('click', () => onClipClick(item.dataset.id));
+                });
+                // 缩略图加载失败 → 回退到 emoji 图标
+                el.querySelectorAll('.clip-thumb').forEach((img) => {
+                    img.addEventListener('error', () => {
+                        const fb = document.createElement('div');
+                        fb.className = 'clip-thumb-fallback';
+                        fb.textContent = '🖼';
+                        img.replaceWith(fb);
+                    });
+                });
+            } catch (e) {
+                el.innerHTML = emptyState('⚠️', '加载失败', e.message);
+            }
+        }
+
+        // 字节大小 → 可读（KB/MB）
+        function formatSize(n) {
+            if (n == null || isNaN(n)) return '';
+            if (n < 1024) return n + ' B';
+            if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+            return (n / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        function renderClip(c) {
+            const type = c.type || 'text';
+            let preview = '';
+            let time = c.timestamp || c.time || c.updatedAt || c.createdAt || '';
+            // 左侧视觉：text/files 用 emoji 图标，image 用真实缩略图（加载失败回退 emoji）
+            let leftSlot;
+            if (type === 'text') {
+                preview = (c.content || c.text || '').slice(0, 140);
+                leftSlot = '<div class="clip-icon">📄</div>';
+            } else if (type === 'image') {
+                preview = '图片' + (c.size ? ' · ' + formatSize(c.size) : '');
+                // 缩略图走字节流路由，带 key query；loading=lazy 避免长列表一次性拉全部
+                leftSlot = `<img class="clip-thumb" loading="lazy" src="${withKey('/api/clipboard/' + encodeURIComponent(c.id) + '/blob')}" alt="" />`;
+            } else if (type === 'files') {
+                const names = Array.isArray(c.files) ? c.files.map((f) => f.name || f) : [];
+                preview = names.length ? names.join(', ') : (c.name || '');
+                leftSlot = '<div class="clip-icon">📁</div>';
+            } else {
+                preview = c.content || c.text || c.name || '';
+                leftSlot = '<div class="clip-icon">📋</div>';
+            }
+            if (!preview) preview = '(空)';
+            // 时间戳(ms)转可读，slice 出 mm-dd HH:MM
+            let timeStr = '';
+            if (time) {
+                const d = new Date(typeof time === 'number' && time < 1e12 ? time * 1000 : time);
+                if (!isNaN(d)) timeStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            }
+            const timeTag = timeStr ? `<div class="clip-time">${escapeHtml(timeStr)}</div>` : '';
+            // data-text 存完整文本，点击时直接用，避免网络请求破坏用户手势上下文
+            const fullText = type === 'text' ? (c.content || c.text || '') : '';
+            return `<div class="list-item clip-item" data-id="${escapeAttr(c.id)}" data-type="${escapeAttr(type)}" data-text="${escapeAttr(fullText)}">
+                ${leftSlot}
+                <div class="li-main">
+                    <div class="li-title">${escapeHtml(preview)}</div>
+                </div>
+                ${timeTag}
+            </div>`;
+        }
+
+        // 统一点击分发：按类型决定行为
+        //   text  → 复制到手机剪贴板（保持原 copyClip 逻辑）
+        //   image → 打开大图弹层（长按可保存到手机）
+        //   files → 打开文件列表弹层（每行可下载）
+        function onClipClick(id) {
+            const c = clipItemsCache.find((x) => String(x.id) === String(id));
+            if (!c) return toast('记录已过期，请刷新', true);
+            const type = c.type || 'text';
+            if (type === 'text') {
+                copyClip(id, type, c.content || c.text || '');
+            } else if (type === 'image') {
+                document.getElementById('imageModalImg').src = withKey('/api/clipboard/' + encodeURIComponent(id) + '/blob');
+                openModal('imageModal');
+            } else if (type === 'files') {
+                openClipFiles(c);
+            } else {
+                toast('暂不支持该类型', true);
+            }
+        }
+
+        // 文件列表弹层：渲染该剪贴板项里的所有文件，每个可点下载
+        function openClipFiles(c) {
+            const body = document.getElementById('clipFilesBody');
+            const files = Array.isArray(c.files) ? c.files : [];
+            if (!files.length) {
+                body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-mute);">该项没有可下载的文件</div>';
+                openModal('clipFilesModal');
+                return;
+            }
+            const fileIcon = (f) => {
+                if (f.type === 'folder' || f.isDirectory) return '📁';
+                const ext = (f.name || '').split('.').pop().toLowerCase();
+                if (['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext)) return '🖼';
+                if (['pdf'].includes(ext)) return '📕';
+                if (['zip','7z','rar','gz','tar'].includes(ext)) return '🗜';
+                if (['xls','xlsx','csv'].includes(ext)) return '📊';
+                if (['doc','docx','txt','md'].includes(ext)) return '📄';
+                return '📦';
+            };
+            const dlBase = withKey('/api/clipboard/file') +
+                '&id=' + encodeURIComponent(c.id) + '&path=';
+            body.innerHTML = files.map((f) => {
+                const isFolder = f.type === 'folder' || f.isDirectory;
+                const gone = f.exist === false;
+                const meta = [
+                    isFolder ? '文件夹' : '文件',
+                    gone ? '已失效' : null,
+                ].filter(Boolean).join(' · ');
+                const dlAttr = isFolder || gone
+                    ? 'disabled'
+                    : `data-dl="${escapeAttr(dlBase + encodeURIComponent(f.path))}" download="${escapeAttr(f.name || '')}"`;
+                const btnLabel = isFolder ? '不支持' : (gone ? '已失效' : '下载');
+                const btnCls = isFolder || gone ? 'folder' : '';
+                return `<div class="file-row">
+                    <div class="f-icon">${fileIcon(f)}</div>
+                    <div class="f-main">
+                        <div class="f-name">${escapeHtml(f.name || f.path || '')}</div>
+                        <div class="f-meta">${escapeHtml(meta)}</div>
+                    </div>
+                    <button class="f-dl ${btnCls}" ${dlAttr}>${btnLabel}</button>
+                </div>`;
+            }).join('');
+            // 下载按钮：直接 location.href 触发浏览器下载（attachment 头会让浏览器下载而非导航）
+            body.querySelectorAll('.f-dl[data-dl]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
+                    const a = document.createElement('a');
+                    a.href = btn.dataset.dl;
+                    a.download = btn.getAttribute('download') || '';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            });
+            openModal('clipFilesModal');
+        }
+
+        // 直接用列表里已有的 text 同步复制：navigator.clipboard.writeText 必须在用户手势同步链上，
+        // 一旦 await 网络请求就丢失激活，IAB/移动 Safari 会静默拒绝。
+        async function copyClip(id, type, presetText) {
+            if (type !== 'text') return toast('仅支持复制文本类型', true);
+            let text = presetText || '';
+            // 极少数情况列表没带 text（旧数据），再发 get —— 此时大概率丢激活，但至少走 textarea 兜底
+            if (!text) {
+                try {
+                    const data = await api('/api/clipboard/' + encodeURIComponent(id));
+                    text = (data && (data.content || data.text)) || (typeof data === 'string' ? data : '');
+                } catch (e) { return toast(e.message, true); }
+            }
+            if (!text) return toast('内容为空', true);
+            // 优先 navigator.clipboard（同步手势内）
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    toast('已复制到手机剪贴板');
+                    return;
+                } catch (e) { /* 失败则走兜底 */ }
+            }
+            // 兜底:textarea + execCommand，对丢失用户激活更宽容
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.top = '0';
+            ta.style.left = '0';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            ta.setSelectionRange(0, text.length);
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e2) {}
+            document.body.removeChild(ta);
+            if (ok) toast('已复制');
+            else toast('复制失败，请长按文字手动复制', true);
+        }
+
+        // FAB 入口：剪贴板 tab 点「发送到 PC」→ 弹出动作选择（写入文本 / 上传文件）
+        function openClipWrite() {
+            openModal('clipActionModal');
+        }
+        // 动作选择 → 写入文本
+        document.getElementById('clipActionWrite').addEventListener('click', () => {
+            closeModal('clipActionModal');
+            document.getElementById('clipWriteText').value = '';
+            openModal('clipWriteModal');
+            setTimeout(() => document.getElementById('clipWriteText').focus(), 300);
+        });
+        // 动作选择 → 上传文件（触发隐藏 input）
+        document.getElementById('clipActionUpload').addEventListener('click', () => {
+            closeModal('clipActionModal');
+            document.getElementById('clipUploadInput').click();
+        });
+        document.getElementById('clipWriteOk').addEventListener('click', async () => {
+            const text = document.getElementById('clipWriteText').value;
+            if (!text.trim()) return toast('请输入内容', true);
+            const btn = document.getElementById('clipWriteOk');
+            btn.disabled = true;
+            btn.textContent = '写入中…';
+            try {
+                await api('/api/clipboard/copy', { method: 'POST', body: JSON.stringify({ type: 'text', text }) });
+                closeModal('clipWriteModal');
+                toast('已写入 PC 剪贴板');
+                loadClipboard(); // 刷新列表，刚写入的会在最上面
+            } catch (e) { toast(e.message, true); }
+            btn.disabled = false;
+            btn.textContent = '写入';
+        });
+
+        // 上传图片/文件到 PC 剪贴板。选完文件自动 POST。
+        // 不能用 api()（它强制 Content-Type: json + 解析 JSON），multipart 要让浏览器自定 boundary，
+        // 所以走原生 fetch + FormData，手工带 x-bridge-key 头。
+        document.getElementById('clipUploadInput').addEventListener('change', async (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            e.target.value = ''; // 清掉，否则选同一文件不触发 change
+            const progress = document.getElementById('uploadProgress');
+            const bar = progress.querySelector('div');
+            progress.classList.add('show');
+            bar.style.width = '30%';
+            try {
+                const fd = new FormData();
+                fd.append('file', f, f.name);
+                const headers = {};
+                if (cfg.key) headers['x-bridge-key'] = cfg.key;
+                // 不要设 Content-Type：让浏览器自动加 multipart/form-data; boundary=...
+                const base = cfg.url ? cfg.url.replace(/\/$/, '') : '';
+                const res = await fetch(base + '/api/clipboard/upload', {
+                    method: 'POST', body: fd, headers,
+                });
+                bar.style.width = '90%';
+                const txt = await res.text();
+                let json;
+                try { json = JSON.parse(txt); } catch (err) {
+                    throw new Error('上传返回不是 JSON (HTTP ' + res.status + ')');
+                }
+                if (!json.ok) throw new Error(json.error || ('HTTP ' + res.status));
+                bar.style.width = '100%';
+                toast('已上传到 PC 剪贴板');
+                loadClipboard(); // 刷新，刚上传的会在最上面
+            } catch (err) {
+                if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+                    toast('上传失败：无法连接 PC', true);
+                } else {
+                    toast(err.message, true);
+                }
+            } finally {
+                setTimeout(() => progress.classList.remove('show'), 600);
+            }
+        });
+
+        function clipSearch() {
+            const q = document.getElementById('clipSearch').value.trim();
+            loadClipboard(q);
+        }
+        document.getElementById('clipClear').addEventListener('click', () => {
+            const inp = document.getElementById('clipSearch');
+            inp.value = '';
+            document.getElementById('clipClear').classList.remove('show');
+            loadClipboard();
+            inp.focus();
+        });
+        document.getElementById('clipSearch').addEventListener('input', (e) => {
+            const has = !!e.target.value;
+            document.getElementById('clipClear').classList.toggle('show', has);
+            // 输入框被清空时（点原生 × 或手动删空），还原完整列表。
+            // 只在从「有值」变「空值」时触发，避免每次输入都重新请求。
+            if (!has && clipSearch._hadValue) loadClipboard();
+            clipSearch._hadValue = has;
+        });
+        document.getElementById('clipSearch').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); clipSearch(); }
+        });
+
+        /* ─── 设置 ─────────────────────── */
+        document.getElementById('serverUrl').value = cfg.url;
+        document.getElementById('bridgeKey').value = cfg.key;
+        document.getElementById('saveSetting').addEventListener('click', async () => {
+            const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+            const key = document.getElementById('bridgeKey').value.trim();
+            cfg.url = url;
+            cfg.key = key;
+            const btn = document.getElementById('saveSetting');
+            btn.disabled = true;
+            btn.textContent = '测试中…';
+            const ok = await checkConn();
+            btn.disabled = false;
+            btn.textContent = '保存并测试';
+            if (ok) {
+                toast('连接成功');
+                window._clipLoaded = true;
+                loadClipboard();
+                switchTab('clip');
+            } else {
+                toast('连接失败,请检查配置', true);
+            }
+        });
+
+        /* ─── FAB ─────────────────────── */
+        document.getElementById('fab').addEventListener('click', () => {
+            const active = document.querySelector('nav.tabbar button.active').dataset.tab;
+            if (active === 'todo') openTodoCreate();
+            else if (active === 'note') openModal('noteCreateModal');
+            else if (active === 'clip') openClipWrite();
+        });
+
+        /* ─── 工具:HTML 转义 ─────────────── */
+        function escapeHtml(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function escapeAttr(s) { return escapeHtml(s); }
+
+        /* ─── 轻量 Markdown 解析器（单文件，无依赖）─────────────
+         * 支持语法：标题 h1-h4 / 粗体 / 斜体 / 行内代码 / 代码块（``` 和缩进）
+         *          无序列表 / 有序列表 / 引用 / 分隔线 / 链接 / 表格 / 段落
+         * 安全：全文先 escapeHtml，再解析标记，输出无裸 <script> 风险。
+         * 不支持的（直接当文本显示，不报错）：脚注、任务列表、复杂嵌套、HTML 标签
+         */
+        function renderMarkdown(src) {
+            if (!src) return '<p class="md-empty">(空笔记)</p>';
+            // 1. 先转义，保证后续不会注入 HTML
+            let text = escapeHtml(src);
+            // 统一换行
+            text = text.replace(/\r\n/g, '\n');
+
+            const lines = text.split('\n');
+            const out = [];      // 输出 HTML 行
+            let i = 0;
+
+            // 行内标记解析（顺序敏感：先代码再粗体再斜体再链接）
+            function inline(s) {
+                // 行内代码 `xxx`（内容不再解析其他标记）
+                s = s.replace(/`([^`]+?)`/g, (_, c) => '\u0000CODE\u0000' + c + '\u0001');
+                // 粗体 **xxx** 或 __xxx__
+                s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+                     .replace(/__([^_]+?)__/g, '<strong>$1</strong>');
+                // 斜体 *xxx* 或 _xxx_
+                s = s.replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<em>$2</em>')
+                     .replace(/(^|[^_])_([^_\s][^_]*?)_/g, '$1<em>$2</em>');
+                // 链接 [text](url) —— 只允许 http/https/相对路径，过滤所有可执行协议
+                s = s.replace(/\[([^\]]+?)\]\(([^)\s]+)\)/g, (m, t, u) => {
+                    if (/^(javascript|data|vbscript|file):/i.test(u)) return m;
+                    return '<a href="' + u + '" target="_blank" rel="noopener">' + t + '</a>';
+                });
+                // 还原行内代码
+                s = s.replace(/\u0000CODE\u0000([\s\S]*?)\u0001/g, '<code>$1</code>');
+                return s;
+            }
+
+            while (i < lines.length) {
+                let line = lines[i];
+
+                // 2. 代码块 ```lang ... ```
+                if (/^```/.test(line)) {
+                    const buf = [];
+                    i++;
+                    while (i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i]); i++; }
+                    i++; // 跳过闭合 ```
+                    out.push('<pre><code>' + buf.join('\n') + '</code></pre>');
+                    continue;
+                }
+
+                // 3. 空行（段落分隔）
+                if (/^\s*$/.test(line)) { i++; continue; }
+
+                // 4. 标题 # ## ### ####
+                const h = line.match(/^(#{1,4})\s+(.+)$/);
+                if (h) { out.push('<h' + h[1].length + '>' + inline(h[2]) + '</h' + h[1].length + '>'); i++; continue; }
+
+                // 5. 分隔线 --- 或 ***
+                if (/^(\s*[-*]){3,}\s*$/.test(line)) { out.push('<hr>'); i++; continue; }
+
+                // 6. 引用 > xxx（连续行合并）
+                if (/^>\s?/.test(line)) {
+                    const buf = [];
+                    while (i < lines.length && /^>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^>\s?/, '')); i++; }
+                    out.push('<blockquote>' + inline(buf.join('<br>')) + '</blockquote>');
+                    continue;
+                }
+
+                // 7. 表格 | a | b | + 分隔行 |---|---|
+                if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+                    const header = line.split('|').slice(1, -1).map(s => s.trim());
+                    i += 2; // 跳过表头和分隔行
+                    const rows = [];
+                    while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+                        rows.push(lines[i].split('|').slice(1, -1).map(s => s.trim()));
+                        i++;
+                    }
+                    let tbl = '<table><thead><tr>' + header.map(h => '<th>' + inline(h) + '</th>').join('') + '</tr></thead><tbody>';
+                    for (const r of rows) tbl += '<tr>' + r.map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>';
+                    tbl += '</tbody></table>';
+                    out.push(tbl);
+                    continue;
+                }
+
+                // 8. 无序列表 - / * / + xxx
+                if (/^\s*[-*+]\s+/.test(line)) {
+                    const buf = [];
+                    while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) { buf.push('<li>' + inline(lines[i].replace(/^\s*[-*+]\s+/, '')) + '</li>'); i++; }
+                    out.push('<ul>' + buf.join('') + '</ul>');
+                    continue;
+                }
+
+                // 9. 有序列表 1. xxx
+                if (/^\s*\d+\.\s+/.test(line)) {
+                    const buf = [];
+                    while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) { buf.push('<li>' + inline(lines[i].replace(/^\s*\d+\.\s+/, '')) + '</li>'); i++; }
+                    out.push('<ol>' + buf.join('') + '</ol>');
+                    continue;
+                }
+
+                // 10. 段落：连续非空非标记行合并
+                const buf = [line];
+                i++;
+                while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^(```|#{1,4}\s|>\s?|\s*[-*+]\s|\s*\d+\.\s|\s*\|)/.test(lines[i])) {
+                    buf.push(lines[i]); i++;
+                }
+                out.push('<p>' + inline(buf.join('<br>')) + '</p>');
+            }
+
+            return out.join('\n');
+        }
+
+        /* ─── 启动 ─────────────────────── */
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
+
+        (async function init() {
+            // 合并设计：默认同源，无需配置地址。直接测试连接。
+            // 默认进剪贴板 tab（导航栏第一位）。连不上才去设置页。
+            // 支持 ?tab=xxx 直接定位（如 ?tab=note），便于分享/测试。
+            const params = new URLSearchParams(location.search);
+            const initTab = ['clip', 'todo', 'note', 'setting'].includes(params.get('tab')) ? params.get('tab') : 'clip';
+            // 支持 ?key=xxx:PC 控制台生成的带密钥地址,手机打开自动鉴权。
+            // 存进 localStorage 后立刻从地址栏抹掉 key,避免持续暴露在历史/地址栏。
+            const urlKey = params.get('key');
+            if (urlKey) {
+                localStorage.setItem('bridgeKey', urlKey);
+                const cleanUrl = location.pathname + (params.get('tab') ? '?tab=' + params.get('tab') : '');
+                history.replaceState(null, '', cleanUrl);
+            }
+            const ok = await checkConn();
+            if (ok) {
+                // 统一走 switchTab：它会设置标题、FAB 显示/图标、并触发对应 tab 的加载
+                switchTab(initTab);
+                if (initTab === 'clip') { window._clipLoaded = true; loadClipboard(); }
+            } else {
+                switchTab('setting');
+                document.getElementById('clipList').innerHTML = emptyState('⚙️', '连接失败', 'PC 端桥接服务未启动，或请在「设置」里填写 PC 地址');
+            }
+        })();
+    </script>
+</body>
+</html>

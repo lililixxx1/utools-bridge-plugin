@@ -1,0 +1,27 @@
+{
+    "main": "index.html",
+    "logo": "logo.png",
+    "preload": "preload.js",
+    "pluginName": "插件手机同步",
+    "description": "手机浏览器访问 PC 端 uTools - 待办、笔记、剪贴板随叫随到，可添加到主屏幕当 App",
+    "version": "1.0.0",
+    "author": "ccc",
+    "pluginSetting": {
+        "single": true,
+        "height": 480
+    },
+    "features": [
+        {
+            "code": "bridge-open",
+            "explain": "打开插件手机同步控制台",
+            "platform": ["win32", "darwin", "linux"],
+            "cmds": [
+                "插件手机同步",
+                "手机同步",
+                "手机访问",
+                "移动桥接",
+                "手机连uTools"
+            ]
+        }
+    ]
+}
