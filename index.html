@@ -968,12 +968,16 @@
             const pop = document.getElementById('guidePop');
 
             // 先把目标滚动到视口中央:小窗口下后续步骤(启动按钮等)可能在屏外,
-            // 不滚过去用户看不到高亮和气泡。smooth 滚动后再定位(延迟读布局)。
+            // 不滚过去用户看不到高亮和气泡。这里必须用 instant(瞬时)而非 smooth:
+            // ① smooth 的缓动动画本身慢,点「下一步」后页面拖沓;
+            // ② smooth 动画期间持续冒 scroll 事件,而本函数又监听了 scroll,
+            //    每帧都会再触发一次 scrollIntoView(smooth),多次平滑滚动相互打架,
+            //    页面就变成一顿一顿地慢慢挪——这正是"移动速度慢"的根因。
             if (el && typeof el.scrollIntoView === 'function') {
-                try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                try { el.scrollIntoView({ behavior: 'instant', block: 'center' }); } catch (e) {}
             }
-            // 平滑滚动需要时间,延迟读取滚动后的位置再放高亮洞和气泡
-            setTimeout(() => positionGuide(el, step, mask, hole, pop), 200);
+            // 瞬时滚动同步完成,目标坐标已就绪,直接定位高亮洞和气泡,不再需要延时
+            positionGuide(el, step, mask, hole, pop);
         }
 
         /** 计算并放置高亮洞 + 气泡(滚动完成后调用,读到的坐标才准) */
