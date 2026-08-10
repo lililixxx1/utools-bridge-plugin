@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>插件手机同步</title>
+    <script src="qrcode.js"></script>
     <style>
         /* ─── 设计 Token(与 gopeed-helper 同源)── */
         :root {
@@ -213,6 +214,15 @@
             transition: opacity 0.15s;
         }
         .val:hover .copy-ic { opacity: 1; }
+        .val .qr-ic {
+            width: 15px;
+            height: 15px;
+            color: var(--text-mute);
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+        .val .qr-ic:hover { color: var(--primary); }
 
         .badge {
             font-size: 11px;
@@ -401,6 +411,85 @@
         .toast.show { opacity: 1; transform: translate(-50%, 0); }
         .toast.err { background: var(--danger); color: #fff; }
 
+        /* ─── 二维码弹窗 ─────────────────── */
+        .qr-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transition: background 0.2s;
+        }
+        .qr-mask.on {
+            background: rgba(0, 0, 0, 0.45);
+            pointer-events: auto;
+        }
+        .qr-modal {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            padding: 20px 22px 18px;
+            width: 280px;
+            max-width: 90vw;
+            text-align: center;
+            transform: scale(0.92);
+            opacity: 0;
+            transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.2s;
+        }
+        .qr-mask.on .qr-modal { transform: scale(1); opacity: 1; }
+        .qr-modal h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+        .qr-modal .qr-canvas-wrap {
+            display: inline-block;
+            padding: 12px;
+            background: #fff;
+            border-radius: 8px;
+            line-height: 0; /* 消除 canvas 下方基线间隙 */
+        }
+        .qr-modal canvas { display: block; width: 208px; height: 208px; }
+        .qr-modal .qr-url {
+            margin-top: 14px;
+            padding: 8px 10px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+            font-size: 11.5px;
+            color: var(--text-soft);
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        .qr-modal .qr-hint {
+            margin-top: 10px;
+            font-size: 11.5px;
+            color: var(--text-mute);
+            line-height: 1.5;
+        }
+        .qr-modal .qr-close {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            color: var(--text-mute);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            border-radius: 6px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .qr-modal .qr-close:hover { background: var(--bg-hover); color: var(--text); }
+        .qr-modal { position: relative; }
+
         /* ─── 新手引导 ─────────────────── */
         .guide-mask {
             position: fixed;
@@ -540,6 +629,9 @@
             <label>访问地址</label>
             <div class="val" id="fullUrl" title="点击复制">
                 <span class="val-text">—</span>
+                <svg class="qr-ic" id="qrBtn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="显示二维码">
+                    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3z M20 14h1v1h-1z M14 20h1v1h-1z M17 17h4 M17 20h4 M20 17v4" />
+                </svg>
                 <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
@@ -586,6 +678,15 @@
     </div>
 
     <div class="toast" id="toast"></div>
+    <div class="qr-mask" id="qrMask">
+        <div class="qr-modal">
+            <button class="qr-close" id="qrClose" title="关闭">×</button>
+            <h3>扫码连接手机</h3>
+            <div class="qr-canvas-wrap"><canvas id="qrCanvas" width="416" height="416"></canvas></div>
+            <div class="qr-url" id="qrUrl">—</div>
+            <div class="qr-hint">📱 手机和电脑连同一 WiFi,用相机或浏览器扫码即可打开。访问密钥已自动带在地址里。</div>
+        </div>
+    </div>
     <div class="guide-mask" id="guideMask"></div>
     <div class="guide-hole" id="guideHole" style="display:none"></div>
     <div class="guide-pop" id="guidePop" style="display:none"></div>
@@ -624,6 +725,39 @@
                 catch (e2) { toast('复制失败', true); }
             }
         }
+
+        /* ─── 访问地址二维码 ───────────────────────────────────
+           访问地址可能带 ?key=密钥,所以绝不能用在线二维码 API(会把
+           密钥发到第三方)。这里本地用 qrcode.js(kazuhikoarase, MIT)在
+           canvas 上绘制,强制白底黑模块,不受深色主题影响,保证扫码对比度。 */
+        function showQr() {
+            const span = $('fullUrl').querySelector('.val-text');
+            const url = span ? span.textContent.trim() : '';
+            if (!url || url === '—') { toast('请先启动桥接服务', true); return; }
+
+            // 容错级别 M:足够抗污损,码也不会太大(本机短 URL 实测 29×29)
+            const qr = qrcode(0, 'M');
+            qr.addData(url);
+            qr.make();
+
+            const canvas = $('qrCanvas');
+            const ctx = canvas.getContext('2d');
+            const n = qr.getModuleCount();
+            const PIX = canvas.width / n;            // 每模块像素(canvas 内部分辨率)
+            // 整块先铺白底(留白边 = 4 模块宽,符合二维码静区规范)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    if (qr.isDark(r, c)) ctx.fillRect(c * PIX, r * PIX, PIX + 0.5, PIX + 0.5);
+                }
+            }
+
+            $('qrUrl').textContent = url;
+            $('qrMask').classList.add('on');
+        }
+        function closeQr() { $('qrMask').classList.remove('on'); }
 
         function setVal(id, text) {
             const el = $(id);
@@ -914,6 +1048,15 @@
                     const text = span ? span.textContent : $(id).textContent;
                     copyText(text);
                 });
+            });
+
+            // 访问地址二维码:点二维码图标弹出,点遮罩/关闭按钮/ESC 关闭。
+            // 图标上的点击要阻止冒泡,否则会同时触发外层 .val 的「点击复制」。
+            $('qrBtn').addEventListener('click', (e) => { e.stopPropagation(); showQr(); });
+            $('qrMask').addEventListener('click', (e) => { if (e.target === $('qrMask')) closeQr(); });
+            $('qrClose').addEventListener('click', closeQr);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && $('qrMask').classList.contains('on')) closeQr();
             });
 
             // 首次打开显示新手引导(dbStorage guide-done 标记,看过一次不再弹)
